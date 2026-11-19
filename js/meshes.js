@@ -151,6 +151,8 @@ function blendAge(species, stage, growth01) {
 function leg(parent, x, y, z, height, radius, color) {
   const hip = new Group();
   hip.position.set(x, y, z);
+  const shoulder = part(hip, geo(new SphereGeometry(radius * 2.4, 10, 8)), color, 0, radius * 0.2, 0, { shadow: false });
+  shoulder.scale.set(1.15, 0.75, 1.35);
   const limb = part(
     hip,
     geo(new CapsuleGeometry(radius, Math.max(0.04, height - radius * 2), 4, 8)),
@@ -459,8 +461,10 @@ function buildQuad(pivot, rig, species, age, S) {
     chest.scale.set(0.92, 0.82, 0.85);
     const belly = part(body, geo(new SphereGeometry(bodyH * 0.38, 14, 10)), c.belly, 0, -bodyH * 0.22, bodyLen * 0.05, { shadow: false });
     belly.scale.set(0.9, 0.55, 1.3);
-    const haunch = part(body, geo(new SphereGeometry(bodyH * 0.42, 14, 10)), c.body, 0, -bodyH * 0.02, -bodyLen * 0.28);
-    haunch.scale.set(0.95, 0.8, 0.85);
+    const haunch = part(body, geo(new SphereGeometry(bodyH * 0.46, 14, 12)), c.body, 0, bodyH * 0.02, -bodyLen * 0.32);
+    haunch.scale.set(1.05, 0.95, 0.9);
+    const withers = part(body, geo(new SphereGeometry(bodyH * 0.4, 12, 10)), c.body, 0, bodyH * 0.22, bodyLen * 0.22);
+    withers.scale.set(0.9, 0.7, 1);
   }
   addFluff(body, c.accent, bodyH * 0.85, 0, age.fluff * species.fluff);
   if (species.stripes) stripes(body, species.stripes, bodyLen, bodyH, c.dark, age.fluff);
@@ -469,11 +473,15 @@ function buildQuad(pivot, rig, species, age, S) {
       part(body, geo(new SphereGeometry(bodyH * 0.08, 6, 5)), c.accent, (i - 2) * bodyW * 0.18, bodyH * 0.2, (i % 2 ? 0.1 : -0.08) * bodyLen, { shadow: false });
     }
   }
-  const neckLen = 0.28 * S * species.neck * age.neck;
-  const neck = part(body, geo(new CylinderGeometry(bodyW * 0.18, bodyW * 0.28, Math.max(0.08, neckLen), 7)), c.body, 0, bodyH * 0.35, bodyLen * 0.38);
-  neck.rotation.x = -0.7;
+  const neckLen = Math.max(0.12, 0.28 * S * species.neck * age.neck);
+  const neck = new Group();
+  neck.position.set(0, bodyH * 0.22, bodyLen * 0.34);
+  neck.rotation.x = species.neck > 1.2 ? -0.85 : -0.45;
+  body.add(neck);
+  const neckMesh = part(neck, geo(new CapsuleGeometry(Math.max(0.04, bodyW * 0.28), neckLen * 0.55, 5, 10)), c.body, 0, neckLen * 0.42, 0);
+  neckMesh.scale.set(1, 1, 0.85);
   if (species.crest && age.neck > 0.6) {
-    part(body, geo(new BoxGeometry(0.04 * S, neckLen * 0.7, 0.06 * S)), c.dark, 0, bodyH * 0.55 + neckLen * 0.2, bodyLen * 0.28, { shadow: false });
+    part(neck, geo(new BoxGeometry(0.035 * S, neckLen * 0.45, 0.05 * S)), c.dark, 0, neckLen * 0.55, -bodyW * 0.05, { shadow: false });
   }
   if (species.hump > 0) {
     const hump = part(body, geo(new SphereGeometry(bodyH * 0.55 * (0.25 + age.hump), 10, 8)), c.body, 0, bodyH * 0.45, -bodyLen * 0.05);
@@ -481,8 +489,9 @@ function buildQuad(pivot, rig, species, age, S) {
   }
   const headR = 0.2 * S * species.bulk * age.head;
   const head = new Group();
-  head.position.set(0, bodyH * 0.45 + neckLen * 0.85, bodyLen * 0.48 + headR * 0.2);
-  body.add(head);
+  head.position.set(0, neckLen * 0.92, 0);
+  head.rotation.x = species.neck > 1.2 ? 0.55 : 0.25;
+  neck.add(head);
   rig.head = head;
   part(head, geo(new SphereGeometry(headR, 20, 16)), c.body, 0, 0, 0);
   const snout = part(head, geo(new SphereGeometry(headR * (0.32 + age.snout * 0.22), 14, 10)), age.snout > 0.7 ? c.body : c.belly, 0, -headR * 0.18, headR * 0.78, {
@@ -507,14 +516,15 @@ function buildQuad(pivot, rig, species, age, S) {
       horn.rotation.z = side * -0.4;
     }
   }
-  const hipY = legH;
-  const hipZ = bodyLen * 0.32;
-  const hipX = bodyW * 0.42;
+  const hipX = bodyW * 0.46;
+  const socketY = legH;
+  const frontZ = bodyLen * 0.3;
+  const rearZ = -bodyLen * 0.3;
   rig.legs = [
-    leg(pivot, -hipX, hipY, hipZ, legH, 0.045 * S * (0.8 + age.pudgy * 0.3), c.dark),
-    leg(pivot, hipX, hipY, hipZ, legH, 0.045 * S * (0.8 + age.pudgy * 0.3), c.dark),
-    leg(pivot, -hipX, hipY, -hipZ, legH, 0.05 * S, c.dark),
-    leg(pivot, hipX, hipY, -hipZ, legH, 0.05 * S, c.dark),
+    leg(pivot, -hipX, socketY, frontZ, legH, 0.045 * S * (0.8 + age.pudgy * 0.3), c.body),
+    leg(pivot, hipX, socketY, frontZ, legH, 0.045 * S * (0.8 + age.pudgy * 0.3), c.body),
+    leg(pivot, -hipX * 1.05, socketY, rearZ, legH * 1.02, 0.055 * S, c.body),
+    leg(pivot, hipX * 1.05, socketY, rearZ, legH * 1.02, 0.055 * S, c.body),
   ];
   const tailLen = (species.tail === "stub" ? 0.12 : 0.42) * S * (0.45 + (1 - age.fluff) * 0.7);
   const tail = new Group();
@@ -549,10 +559,16 @@ function buildBird(pivot, rig, species, age, S) {
     const breast = part(body, geo(new SphereGeometry(bodyR * 0.42, 12, 10)), c.belly, 0, -bodyR * 0.12, bodyR * 0.35, { shadow: false });
     breast.scale.set(0.8, 0.7, 1.1);
   }
-  const headR = bodyR * (age.wing < 0.4 ? 0.72 : 0.48) * age.head;
+  const headR = bodyR * (age.wing < 0.4 ? 0.62 : 0.42) * age.head;
+  const neck = new Group();
+  neck.position.set(0, bodyR * 0.35, bodyLen * 0.42);
+  neck.rotation.x = -0.7;
+  body.add(neck);
+  part(neck, geo(new CapsuleGeometry(headR * 0.45, bodyR * 0.35, 4, 8)), age.wing < 0.4 ? c.accent : c.body, 0, bodyR * 0.28, 0);
   const head = new Group();
-  head.position.set(0, bodyR * 0.55, bodyLen * 0.55);
-  body.add(head);
+  head.position.set(0, bodyR * 0.55, 0);
+  head.rotation.x = 0.45;
+  neck.add(head);
   rig.head = head;
   part(head, geo(new SphereGeometry(headR, 10, 8)), age.wing < 0.4 ? c.accent : c.body, 0, 0, 0);
   const beakLen = headR * (age.wing < 0.45 ? 0.35 : 0.9);
@@ -596,8 +612,14 @@ function buildApe(pivot, rig, species, age, S) {
   const torsoH = 0.55 * S * age.body * (age.round > 0.5 ? 0.8 : 1);
   const torsoW = 0.42 * S * species.bulk * age.pudgy;
   const hipY = legH;
-  const torso = part(pivot, geo(new SphereGeometry(torsoW * 0.55, 18, 14)), c.body, 0, hipY + torsoH * 0.45, 0);
-  torso.scale.set(1.05, 1.28, 0.72);
+  const torso = part(pivot, geo(new SphereGeometry(torsoW * 0.48, 18, 14)), c.body, 0, hipY + torsoH * 0.5, 0);
+  torso.scale.set(1.15, 1.35, 0.78);
+  const pelvis = part(pivot, geo(new SphereGeometry(torsoW * 0.38, 12, 10)), c.dark, 0, hipY + torsoH * 0.18, -0.02 * S);
+  pelvis.scale.set(1.2, 0.7, 0.85);
+  for (const side of [-1, 1]) {
+    const deltoid = part(pivot, geo(new SphereGeometry(torsoW * 0.22, 10, 8)), c.body, side * torsoW * 0.62, hipY + torsoH * 0.78, 0.02 * S);
+    deltoid.scale.set(1, 0.75, 0.8);
+  }
   const headR = 0.22 * S * age.head;
   const head = new Group();
   head.position.set(0, hipY + torsoH * 0.95, 0.04 * S);
@@ -636,11 +658,16 @@ function buildElephant(pivot, rig, species, age, S) {
   const bodyH = 0.62 * S * age.pudgy;
   const bodyW = 0.58 * S * age.pudgy;
   const bodyY = legH + bodyH * 0.42;
-  part(pivot, geo(new SphereGeometry(bodyH * 0.55, 20, 16)), c.body, 0, bodyY, 0).scale.set(bodyW / bodyH, 0.92, bodyLen / bodyH);
+  const barrel = part(pivot, geo(new SphereGeometry(bodyH * 0.5, 20, 16)), c.body, 0, bodyY, 0);
+  barrel.scale.set((bodyW / bodyH) * 1.05, 0.88, bodyLen / bodyH);
+  const shoulder = part(pivot, geo(new SphereGeometry(bodyH * 0.32, 12, 10)), c.body, 0, bodyY - bodyH * 0.05, bodyLen * 0.28);
+  shoulder.scale.set(bodyW / bodyH, 0.7, 0.7);
+  const rump = part(pivot, geo(new SphereGeometry(bodyH * 0.34, 12, 10)), c.body, 0, bodyY, -bodyLen * 0.32);
+  rump.scale.set(bodyW / bodyH * 0.9, 0.75, 0.7);
   addFluff(pivot, c.accent, bodyH * 0.5, bodyY, age.fluff);
   const headR = 0.32 * S * age.head;
   const head = new Group();
-  head.position.set(0, bodyY + bodyH * 0.05, bodyLen * 0.42);
+  head.position.set(0, bodyY + bodyH * 0.02, bodyLen * 0.32);
   pivot.add(head);
   rig.head = head;
   part(head, geo(new SphereGeometry(headR, 18, 14)), c.body, 0, 0, 0);
