@@ -8,11 +8,14 @@ import {
   CylinderGeometry,
   Group,
   Mesh,
+  MeshPhysicalMaterial,
   MeshStandardMaterial,
+  NoColorSpace,
   RepeatWrapping,
   SphereGeometry,
   SRGBColorSpace,
   TorusGeometry,
+  Vector2,
 } from "../vendor/three.module.js";
 import { SPECIES, nextStage } from "./data.js";
 
@@ -55,17 +58,18 @@ const AGE = {
 };
 
 let buildStage = "adult";
+let eyeColor = "#6a4a28";
 
 const texCache = new Map();
 
-function canvasTex(key, draw, repeat = 2) {
+function canvasTex(key, draw, repeat = 2, colorSpace = SRGBColorSpace) {
   if (texCache.has(key)) return texCache.get(key);
   const canvas = document.createElement("canvas");
   canvas.width = 128;
   canvas.height = 128;
   draw(canvas.getContext("2d"), canvas.width);
   const tex = new CanvasTexture(canvas);
-  tex.colorSpace = SRGBColorSpace;
+  tex.colorSpace = colorSpace;
   tex.wrapS = RepeatWrapping;
   tex.wrapT = RepeatWrapping;
   tex.repeat.set(repeat, repeat);
@@ -75,20 +79,37 @@ function canvasTex(key, draw, repeat = 2) {
 
 function furTex() {
   return canvasTex("fur", (g, n) => {
-    g.fillStyle = "#ffffff";
+    g.fillStyle = "#f4f1ea";
     g.fillRect(0, 0, n, n);
-    for (let i = 0; i < 900; i++) {
+    for (let i = 0; i < 1600; i++) {
       const x = Math.random() * n;
       const y = Math.random() * n;
-      const shade = 150 + Math.floor(Math.random() * 90);
-      g.strokeStyle = `rgba(${shade},${shade - 8},${shade - 18},0.45)`;
-      g.lineWidth = 1;
+      const shade = 120 + Math.floor(Math.random() * 110);
+      g.strokeStyle = `rgba(${shade},${Math.max(0, shade - 12)},${Math.max(0, shade - 24)},0.55)`;
+      g.lineWidth = Math.random() < 0.2 ? 2 : 1;
       g.beginPath();
       g.moveTo(x, y);
-      g.lineTo(x + (Math.random() - 0.5) * 1.5, y + 2 + Math.random() * 6);
+      g.lineTo(x + (Math.random() - 0.5) * 1.2, y + 3 + Math.random() * 8);
       g.stroke();
     }
-  }, 3);
+  }, 4);
+}
+
+function furNormal() {
+  return canvasTex("fur-n", (g, n) => {
+    const img = g.createImageData(n, n);
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        const i = (y * n + x) * 4;
+        const strand = Math.sin((x * 0.7) + (y * 1.8)) * 22;
+        img.data[i] = 128 + strand;
+        img.data[i + 1] = 148;
+        img.data[i + 2] = 230;
+        img.data[i + 3] = 255;
+      }
+    }
+    g.putImageData(img, 0, 0);
+  }, 4, NoColorSpace);
 }
 
 function geo(g) {
@@ -112,17 +133,25 @@ function mat(color, opts = {}) {
   } else if (buildStage === "prime") {
     c.offsetHSL(0.04, 0.1, 0.02);
   }
-  return new MeshStandardMaterial({
+  const fur = opts.map !== false;
+  const sheen = new Color(c).offsetHSL(0, -0.05, 0.12);
+  const material = new MeshPhysicalMaterial({
     color: c,
-    map: opts.map === false ? null : furTex(),
+    map: fur ? furTex() : null,
+    normalMap: fur ? furNormal() : null,
     emissive,
-    emissiveIntensity: buildStage === "alpha" ? 0.12 : emissiveIntensity,
-    roughness: opts.roughness ?? (buildStage === "alpha" ? 0.55 : 0.82),
-    metalness: 0.02,
+    emissiveIntensity: buildStage === "alpha" ? 0.08 : emissiveIntensity,
+    roughness: opts.roughness ?? 0.86,
+    metalness: 0,
+    sheen: fur ? 0.72 : 0,
+    sheenRoughness: 0.42,
+    sheenColor: sheen,
     transparent: !!opts.transparent,
     opacity: opts.opacity ?? 1,
     depthWrite: opts.depthWrite ?? true,
   });
+  if (fur) material.normalScale = new Vector2(0.45, 0.85);
+  return material;
 }
 
 function part(parent, geometry, color, x, y, z, opts = {}) {
@@ -169,16 +198,29 @@ function leg(parent, x, y, z, height, radius, color) {
     -height,
     radius * 0.3,
   );
-  paw.scale.set(1, 0.65, 1.2);
+  paw.scale.set(1.15, 0.55, 1.35);
+  for (let i = 0; i < 4; i++) {
+    const toe = part(
+      hip,
+      geo(new SphereGeometry(radius * 0.48, 8, 6)),
+      color,
+      (i - 1.5) * radius * 0.72,
+      -height - radius * 0.05,
+      radius * 1.15,
+      { shadow: false },
+    );
+    toe.scale.set(0.8, 0.55, 1.1);
+  }
   parent.add(hip);
   return hip;
 }
 
 function eyePair(parent, spread, y, z, size, dark) {
   for (const side of [-1, 1]) {
-    part(parent, geo(new SphereGeometry(size, 8, 6)), "#f7f4ee", side * spread, y, z, { shadow: false });
-    part(parent, geo(new SphereGeometry(size * 0.48, 8, 6)), dark, side * spread, y, z + size * 0.55, { shadow: false, map: false, roughness: 0.25 });
-    part(parent, geo(new SphereGeometry(size * 0.16, 6, 4)), "#ffffff", side * spread + size * 0.12, y + size * 0.18, z + size * 0.85, { shadow: false, map: false, roughness: 0.1 });
+    part(parent, geo(new SphereGeometry(size, 10, 8)), "#f3efe8", side * spread, y, z, { shadow: false, map: false, roughness: 0.35 });
+    part(parent, geo(new SphereGeometry(size * 0.62, 10, 8)), eyeColor, side * spread, y, z + size * 0.35, { shadow: false, map: false, roughness: 0.22 });
+    part(parent, geo(new SphereGeometry(size * 0.28, 8, 6)), "#140e0c", side * spread, y, z + size * 0.72, { shadow: false, map: false, roughness: 0.18 });
+    part(parent, geo(new SphereGeometry(size * 0.1, 6, 4)), "#ffffff", side * spread + size * 0.16, y + size * 0.16, z + size * 0.9, { shadow: false, map: false, roughness: 0.05 });
   }
 }
 
@@ -190,7 +232,8 @@ function ears(parent, species, age, S, headR) {
     const g = new Group();
     g.position.set(side * headR * 0.72, headR * 0.75, 0);
     if (species.ears === "point" || species.ears === "tuft") {
-      part(g, geo(new ConeGeometry(headR * 0.28, h, 6)), species.colors.body, 0, h * 0.35, 0);
+      part(g, geo(new ConeGeometry(headR * 0.28, h, 8)), species.colors.body, 0, h * 0.35, 0);
+      part(g, geo(new ConeGeometry(headR * 0.14, h * 0.7, 6)), species.colors.belly, 0, h * 0.28, headR * 0.08, { shadow: false });
     } else if (species.ears === "floppy") {
       const flap = part(g, geo(new SphereGeometry(headR * 0.38, 8, 6)), species.colors.body, 0, -h * 0.15, 0);
       flap.scale.set(0.55, 1.3, 0.35);
@@ -353,6 +396,7 @@ function addAlphaMarks(pivot, species, S) {
 export function buildCreature(speciesId, stage, growth01 = 0, accessories = []) {
   const species = SPECIES[speciesId];
   buildStage = stage;
+  eyeColor = species.colors.eye || species.colors.dark || "#5a3a22";
   const age = blendAge(species, stage, growth01);
   const S = species.scale;
   const group = new Group();
@@ -441,11 +485,29 @@ export function buildCreature(speciesId, stage, growth01 = 0, accessories = []) 
   return anim;
 }
 
+const SHAPE = {
+  shiba: { leg: 0.82, len: 0.86, chest: 1.12, head: 0.95, snout: 0.72, neck: 0.62, ear: 0.85, tailUp: 1.35, bib: 1 },
+  retriever: { leg: 0.98, len: 1.08, chest: 1.02, snout: 1.05, neck: 0.8, ear: 1.15 },
+  fox: { leg: 0.92, len: 1.1, chest: 0.8, head: 0.82, snout: 1.2, neck: 0.72, ear: 1.35, tail: 1.5, socks: 1 },
+  cat: { leg: 0.68, len: 1.02, chest: 0.78, head: 1.08, snout: 0.42, neck: 0.5, ear: 0.9, tail: 1.25 },
+  rabbit: { leg: 0.52, len: 0.78, chest: 1.2, head: 1.05, snout: 0.35, neck: 0.35, ear: 1.7 },
+  wolf: { leg: 1.2, len: 1.14, chest: 1.08, head: 0.9, snout: 1.35, neck: 1.05, ear: 0.9, ruff: 1 },
+  deer: { leg: 1.48, len: 1.02, chest: 0.72, head: 0.68, snout: 1.1, neck: 1.65, ear: 1.15 },
+  bear: { leg: 0.58, len: 1.18, chest: 1.4, head: 0.82, snout: 0.65, neck: 0.38, ear: 0.6 },
+  horse: { leg: 1.42, len: 1.16, chest: 1.02, head: 0.6, snout: 1.5, neck: 1.75, ear: 0.7, mane: 1, tail: 1.2 },
+  zebra: { leg: 1.36, len: 1.12, chest: 0.98, head: 0.62, snout: 1.4, neck: 1.6, ear: 0.75, mane: 1, tail: 1.15 },
+  lion: { leg: 1.05, len: 1.22, chest: 1.12, snout: 0.8, neck: 0.85, ear: 0.7 },
+  tiger: { leg: 1.02, len: 1.3, chest: 1.02, snout: 0.85, neck: 0.8, ear: 0.65, tail: 1.15 },
+  camel: { leg: 1.28, len: 1.18, chest: 0.82, head: 0.66, snout: 1.05, neck: 1.85, ear: 0.5 },
+  goat: { leg: 0.82, len: 0.88, chest: 0.88, head: 0.78, snout: 0.65, neck: 0.85 },
+};
+
 function buildQuad(pivot, rig, species, age, S) {
   const c = species.colors;
-  const legH = 0.52 * S * age.leg;
-  const bodyLen = 0.85 * S * species.length * age.body;
-  const bodyH = 0.34 * S * species.bulk * age.pudgy;
+  const sh = SHAPE[species.id] || {};
+  let legH = 0.52 * S * age.leg * (sh.leg || 1);
+  let bodyLen = 0.85 * S * species.length * age.body * (sh.len || 1);
+  let bodyH = 0.34 * S * species.bulk * age.pudgy * (sh.chest || 1);
   const bodyW = bodyH * (0.85 + (1 - age.round) * 0.25);
   const bodyY = legH + bodyH * 0.48;
   const body = new Group();
@@ -473,7 +535,7 @@ function buildQuad(pivot, rig, species, age, S) {
       part(body, geo(new SphereGeometry(bodyH * 0.08, 6, 5)), c.accent, (i - 2) * bodyW * 0.18, bodyH * 0.2, (i % 2 ? 0.1 : -0.08) * bodyLen, { shadow: false });
     }
   }
-  const neckLen = Math.max(0.12, 0.28 * S * species.neck * age.neck);
+  const neckLen = Math.max(0.12, 0.28 * S * species.neck * age.neck * (sh.neck || 1));
   const neck = new Group();
   neck.position.set(0, bodyH * 0.22, bodyLen * 0.34);
   neck.rotation.x = species.neck > 1.2 ? -0.85 : -0.45;
@@ -487,7 +549,17 @@ function buildQuad(pivot, rig, species, age, S) {
     const hump = part(body, geo(new SphereGeometry(bodyH * 0.55 * (0.25 + age.hump), 10, 8)), c.body, 0, bodyH * 0.45, -bodyLen * 0.05);
     hump.scale.set(0.8, 0.7 + age.hump * 0.4, 1);
   }
-  const headR = 0.2 * S * species.bulk * age.head;
+  if (sh.mane) {
+    for (let i = 0; i < 6; i++) {
+      const lock = part(neck, geo(new BoxGeometry(0.02 * S, neckLen * 0.22, 0.012 * S)), "#1a120c", 0, neckLen * (0.2 + i * 0.12), -bodyW * 0.22, { shadow: false, map: false });
+      lock.rotation.x = -0.4;
+    }
+  }
+  if (sh.ruff) {
+    const ruff = part(neck, geo(new SphereGeometry(bodyW * 0.55, 12, 10)), c.accent, 0, neckLen * 0.15, 0, { shadow: false });
+    ruff.scale.set(1.3, 0.7, 1.1);
+  }
+  const headR = 0.2 * S * species.bulk * age.head * (sh.head || 1);
   const head = new Group();
   head.position.set(0, neckLen * 0.92, 0);
   head.rotation.x = species.neck > 1.2 ? 0.55 : 0.25;
@@ -495,12 +567,13 @@ function buildQuad(pivot, rig, species, age, S) {
   rig.head = head;
   part(head, geo(new SphereGeometry(headR, 20, 16)), c.body, 0, 0, 0);
   const snout = part(head, geo(new SphereGeometry(headR * (0.32 + age.snout * 0.22), 14, 10)), age.snout > 0.7 ? c.body : c.belly, 0, -headR * 0.18, headR * 0.78, {
-    scale: [0.85, 0.62, 0.7 + age.snout * 0.9],
+    scale: [0.85, 0.62, (0.7 + age.snout * 0.9) * (sh.snout || 1)],
   });
   part(head, geo(new SphereGeometry(headR * 0.1, 8, 6)), "#2a211c", 0, -headR * 0.12, headR * (0.95 + age.snout * 0.55), { shadow: false, map: false, roughness: 0.35 });
   part(head, geo(new BoxGeometry(headR * 0.28, headR * 0.03, headR * 0.08)), "#3a2a24", 0, -headR * 0.32, headR * 0.9, { shadow: false, map: false });
   eyePair(head, headR * 0.38, headR * 0.15, headR * 0.72, headR * 0.16 * age.eye, c.dark);
   rig.ears = ears(head, species, age, S, headR);
+  if (sh.ear) rig.ears.forEach((ear) => ear.scale.multiplyScalar(sh.ear));
   if (species.mane && age.mane > 0.35) {
     const mane = part(head, geo(new SphereGeometry(headR * (0.7 + age.mane * 0.55), 10, 8)), c.accent, 0, headR * 0.1, -headR * 0.35);
     mane.scale.set(1.15, 1.2, 0.7);
@@ -526,7 +599,12 @@ function buildQuad(pivot, rig, species, age, S) {
     leg(pivot, -hipX * 1.05, socketY, rearZ, legH * 1.02, 0.055 * S, c.body),
     leg(pivot, hipX * 1.05, socketY, rearZ, legH * 1.02, 0.055 * S, c.body),
   ];
-  const tailLen = (species.tail === "stub" ? 0.12 : 0.42) * S * (0.45 + (1 - age.fluff) * 0.7);
+  if (sh.socks) {
+    for (const limb of rig.legs) {
+      part(limb, geo(new CapsuleGeometry(0.03 * S, legH * 0.28, 3, 6)), "#1a120c", 0, -legH * 0.72, 0, { shadow: false, map: false });
+    }
+  }
+  const tailLen = (species.tail === "stub" ? 0.12 : 0.42) * S * (0.45 + (1 - age.fluff) * 0.7) * (sh.tail || 1);
   const tail = new Group();
   tail.position.set(0, bodyY + bodyH * 0.1, -bodyLen * 0.5);
   if (species.tail !== "none") {
@@ -536,6 +614,11 @@ function buildQuad(pivot, rig, species, age, S) {
     }
   }
   pivot.add(tail);
+  if (sh.tailUp) tail.rotation.x = -sh.tailUp;
+  if (sh.bib) {
+    const bib = part(body, geo(new SphereGeometry(bodyH * 0.28, 10, 8)), "#f7f4ee", 0, -bodyH * 0.05, bodyLen * 0.22, { shadow: false });
+    bib.scale.set(0.7, 0.9, 0.45);
+  }
   rig.tail = tail;
   rig.seatY = bodyY + bodyH * 0.62;
   rig.seatZ = -bodyLen * 0.02;
@@ -581,7 +664,7 @@ function buildBird(pivot, rig, species, age, S) {
   beak.rotation.x = Math.PI / 2;
   eyePair(head, headR * (owl ? 0.38 : 0.4), headR * (owl ? 0.08 : 0.1), headR * (owl ? 0.55 : 0.7), headR * (owl ? 0.28 : 0.22) * age.eye, owl ? "#1a120c" : c.dark);
   if (species.ears === "tuft") rig.ears = ears(head, species, age, S, headR);
-  const wingLen = bodyLen * (0.35 + age.wing * 1.5) * (owl ? 0.85 : 1);
+  const wingLen = bodyLen * (0.35 + age.wing * 1.5) * (owl ? 0.85 : species.id === "eagle" ? 1.45 : 1);
   const wingW = bodyR * (0.35 + age.wing * 0.8);
   for (const side of [-1, 1]) {
     const wing = new Group();
