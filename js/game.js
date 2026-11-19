@@ -1,6 +1,7 @@
 import {
   ACESFilmicToneMapping,
   AmbientLight,
+  Color,
   DirectionalLight,
   DoubleSide,
   HemisphereLight,
@@ -19,6 +20,7 @@ import {
   ACCESSORIES,
   SPECIES,
   SPAWNS,
+  BOSSES,
   MISSIONS,
   canClimb,
   currentAbility,
@@ -108,7 +110,7 @@ export class Game {
     this.renderer.shadowMap.enabled = true;
     this.renderer.outputColorSpace = SRGBColorSpace;
     this.renderer.toneMapping = ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.04;
+    this.renderer.toneMappingExposure = 1.16;
 
     this.world = createWorld(this.scene);
     this.hemi = new HemisphereLight("#fff4dc", "#8fb56a", 0.95);
@@ -126,11 +128,16 @@ export class Game {
     this.sun.shadow.bias = -0.00035;
     this.scene.add(this.sun);
     this.scene.add(this.sun.target);
-    this.scene.add(new AmbientLight("#ffffff", 0.18));
+    this.scene.add(new AmbientLight("#fff6ea", 0.28));
+    const rim = new DirectionalLight("#9fd0ff", 0.7);
+    rim.position.set(-24, 18, -16);
+    this.scene.add(rim);
+    this.scene.background = new Color("#b9e2f6");
+    if (this.scene.fog) this.scene.fog.color.set("#d7efe4");
 
     this.person = buildPerson();
     this.scene.add(this.person.group);
-    this.player = { x: 0, y: heightAt(0, 20), z: 20, yaw: Math.PI, moving: false, vy: 0 };
+    this.player = { x: 0, y: heightAt(0, 20), z: 20, yaw: Math.PI, moving: false, vy: 0, hp: 120, maxHp: 120, hit: 0 };
     this.prevX = this.player.x;
     this.prevZ = this.player.z;
     this.camYaw = 0;
@@ -140,13 +147,43 @@ export class Game {
 
     this.views = new Map();
     this.wildViews = new Map();
-    this.wilds = SPAWNS.filter((s) => !this.removedWild.includes(s.id)).map((s) => ({
-      ...s,
-      yaw: 0,
-      tx: s.x,
-      tz: s.z,
-      moving: false,
-    }));
+    this.stats.bosses = this.stats.bosses || [];
+    this.wilds = SPAWNS.filter((s) => !this.removedWild.includes(s.id)).map((s) => {
+      const sp = SPECIES[s.species];
+      const maxHp = Math.round(28 + sp.base.hp * 0.55);
+      return {
+        ...s,
+        yaw: 0,
+        tx: s.x,
+        tz: s.z,
+        homeX: s.x,
+        homeZ: s.z,
+        moving: false,
+        temperament: sp.temperament,
+        hp: maxHp,
+        maxHp,
+        attackCd: 0,
+        submitted: false,
+      };
+    });
+    for (const boss of BOSSES) {
+      if (this.stats.bosses.includes(boss.id)) continue;
+      this.wilds.push({
+        ...boss,
+        boss: true,
+        yaw: 0,
+        tx: boss.x,
+        tz: boss.z,
+        homeX: boss.x,
+        homeZ: boss.z,
+        moving: false,
+        temperament: "fight",
+        maxHp: boss.hp,
+        attackCd: 0,
+        submitted: false,
+        down: false,
+      });
+    }
 
     this.mounted = false;
     this.mountUid = null;
@@ -361,47 +398,156 @@ export class Game {
   }
 
   updateWilds(dt) {
+    this.player.hit = Math.max(0, this.player.hit - dt);
+    let threat = false;
     for (const wild of this.wilds) {
-      if (Math.hypot(wild.x - wild.tx, wild.z - wild.tz) < 0.5) {
-        const home = SPAWNS.find((s) => s.id === wild.id);
+      const sp = SPECIES[wild.species];
+      const pdx = this.player.x - wild.x;
+      const pdz = this.player.z - wild.z;
+      const pd = Math.hypot(pdx, pdz) || 0.001;
+      wild.attackCd = Math.max(0, (wild.attackCd || 0) - dt);
+      let speed = 1.2;
+      if (wild.down || wild.submitted) {
+        speed = 0;
+      } else if (wild.boss || wild.temperament === "fight") {
+        const range = wild.boss ? 26 : 14;
+        if (pd < range) {
+          threat = true;
+          wild.tx = this.player.x;
+          wild.tz = this.player.z;
+          const enraged = wild.boss && wild.hp < wild.maxHp * 0.35;
+          speed = wild.boss ? (enraged ? 8.4 : 6.1) : 5.6;
+          const reach = wild.boss ? 2.6 : 1.55;
+          if (pd < reach && wild.attackCd <= 0 && !this.panelOpen) {
+            this.hurtPlayer(wild);
+            wild.attackCd = wild.boss ? (enraged ? 0.62 : 0.9) : 1.55;
+          }
+        } else if (Math.hypot(wild.x - wild.tx, wild.z - wild.tz) < 0.6) {
+          const a = Math.random() * Math.PI * 2;
+          wild.tx = wild.homeX + Math.cos(a) * (wild.boss ? 3 : 4);
+          wild.tz = wild.homeZ + Math.sin(a) * (wild.boss ? 3 : 4);
+        }
+      } else if (pd < 11) {
+        wild.tx = wild.x - (pdx / pd) * 9;
+        wild.tz = wild.z - (pdz / pd) * 9;
+        speed = 7.4;
+      } else if (Math.hypot(wild.x - wild.tx, wild.z - wild.tz) < 0.5) {
         const a = Math.random() * Math.PI * 2;
-        const r = 1 + Math.random() * 4.5;
-        wild.tx = home.x + Math.cos(a) * r;
-        wild.tz = home.z + Math.sin(a) * r;
+        wild.tx = wild.homeX + Math.cos(a) * 4;
+        wild.tz = wild.homeZ + Math.sin(a) * 4;
       }
       const dx = wild.tx - wild.x;
       const dz = wild.tz - wild.z;
       const dist = Math.hypot(dx, dz) || 1;
-      const step = Math.min(dist, 1.25 * dt);
-      wild.x += (dx / dist) * step;
-      wild.z += (dz / dist) * step;
-      wild.yaw = Math.atan2(dx, dz);
-      wild.moving = step > 0.002;
-      const sp = SPECIES[wild.species];
+      const step = Math.min(dist, speed * dt);
+      if (speed > 0) {
+        wild.x = clamp(wild.x + (dx / dist) * step, -118, 140);
+        wild.z = clamp(wild.z + (dz / dist) * step, -118, 140);
+        wild.yaw = Math.atan2(dx, dz);
+      }
+      wild.moving = step > 0.01 && speed > 0;
+      const stage = wild.boss ? "alpha" : "baby";
       let view = this.wildViews.get(wild.id);
-      if (!view) {
-        view = buildCreature(wild.species, "baby", 0.15, []);
+      if (!view || view.stage !== stage) {
+        if (view) {
+          this.scene.remove(view.group);
+          view.dispose();
+        }
+        view = buildCreature(wild.species, stage, wild.boss ? 1 : 0.2, []);
+        view.stage = stage;
         this.scene.add(view.group);
         this.wildViews.set(wild.id, view);
       }
       const y = heightAt(wild.x, wild.z);
+      const size = wild.boss ? wild.scale : 1;
       view.group.position.set(wild.x, y, wild.z);
       view.group.rotation.y = wild.yaw;
+      view.group.scale.setScalar(size * (wild.flash > 0 ? 1.06 : 1));
+      wild.flash = Math.max(0, (wild.flash || 0) - dt);
       view.animate(dt, {
         moving: wild.moving,
-        hop: sp.personality === "hoppy",
+        hop: sp.personality === "hoppy" || (wild.temperament === "flee" && pd < 11),
         flap: sp.plan === "bird",
-        flapStrong: sp.plan === "bird",
-        play: sp.personality === "playful" && !wild.moving,
-        sit: sp.personality === "sleepy" && !wild.moving && Math.sin(this.time * 0.4 + wild.x) > 0.55,
+        flapStrong: sp.plan === "bird" && (wild.boss || wild.moving),
+        play: false,
+        sit: false,
       });
-      if (Math.hypot(wild.x - this.player.x, wild.z - this.player.z) < 16 && !this.stats.discovered[wild.species]) {
+      if (pd < 16 && !this.stats.discovered[wild.species]) {
         this.stats.discovered[wild.species] = true;
         this.coins += 6;
-        this.toast(`Discovered ${sp.name}`);
+        this.toast(`Discovered ${wild.boss ? wild.name : sp.name}`);
         this.saveSoon();
       }
     }
+    if (!threat && this.player.hp < this.player.maxHp) {
+      this.player.hp = Math.min(this.player.maxHp, this.player.hp + 10 * dt);
+    }
+  }
+
+  hurtPlayer(wild) {
+    const dmg = wild.boss ? (wild.hp < wild.maxHp * 0.35 ? 34 : 24) : 9;
+    this.player.hp -= dmg;
+    this.player.hit = 0.35;
+    const away = Math.atan2(this.player.x - wild.x, this.player.z - wild.z);
+    const knock = wild.boss ? 3.2 : 1.3;
+    this.player.x += Math.sin(away) * knock;
+    this.player.z += Math.cos(away) * knock;
+    this.toast(`${wild.boss ? wild.name : SPECIES[wild.species].name} hits you for ${dmg}.`);
+    if (this.player.hp <= 0) {
+      this.player.hp = this.player.maxHp;
+      if (this.mounted) this.dismount();
+      this.player.x = 0;
+      this.player.z = 20;
+      this.player.y = heightAt(0, 20);
+      this.ui?.banner("You were driven back to camp.");
+    }
+  }
+
+  strikeNear(pet) {
+    let best = null;
+    let bestD = 3.2;
+    for (const wild of this.wilds) {
+      if (wild.down || wild.submitted) continue;
+      if (wild.temperament !== "fight" && !wild.boss) continue;
+      const d = Math.hypot((pet.x ?? this.player.x) - wild.x, (pet.z ?? this.player.z) - wild.z);
+      const reach = wild.boss ? 4.2 : 2.8;
+      if (d < reach && d < bestD) {
+        best = wild;
+        bestD = d;
+      }
+    }
+    if (!best) return false;
+    const stats = petStats(pet);
+    let dmg = Math.max(1, stats.atk);
+    if (pet.stage === "baby") dmg = Math.max(1, Math.round(dmg * 0.4));
+    else if (pet.stage === "juvenile") dmg = Math.round(dmg * 0.7);
+    else if (pet.stage === "alpha") dmg = Math.round(dmg * 1.55);
+    if (best.boss) dmg = Math.max(1, Math.round(dmg * 0.42));
+    best.hp -= dmg;
+    best.flash = 0.18;
+    this.burst(best.x, heightAt(best.x, best.z) + 0.8, best.z);
+    if (best.hp <= 0) this.defeatWild(best);
+    else this.toast(`${dmg} damage. ${best.boss ? best.name : SPECIES[best.species].name} has ${Math.max(0, Math.ceil(best.hp))} left.`);
+    return true;
+  }
+
+  defeatWild(wild) {
+    wild.hp = 0;
+    wild.down = true;
+    wild.submitted = true;
+    if (wild.boss) {
+      if (!this.stats.bosses.includes(wild.id)) this.stats.bosses.push(wild.id);
+      this.coins += 90;
+      const pet = this.activePet();
+      if (pet) {
+        this.addXp(pet, 60);
+        this.addGrowth(pet, 28);
+      }
+      this.ui?.banner(`${wild.name} falls.`);
+    } else {
+      this.toast(`${SPECIES[wild.species].name} yields. Press E to befriend them.`);
+    }
+    this.saveSoon();
   }
 
   updateFoot(dt) {
@@ -730,7 +876,8 @@ export class Game {
       const punch = pet.punch || 0;
       const pulse = punch > 0 ? 1 + Math.sin(Math.min(1, punch) * Math.PI) * 0.12 : 1;
       pet.punch = Math.max(0, punch - dt * 0.65);
-      view.anim.group.scale.setScalar((0.94 + (pet.growth / 100) * 0.1) * pulse);
+      const stageScale = pet.stage === "alpha" ? 1.32 : pet.stage === "prime" ? 1.14 : pet.stage === "baby" ? 0.88 : pet.stage === "juvenile" ? 0.94 : 1;
+      view.anim.group.scale.setScalar((0.94 + (pet.growth / 100) * 0.1) * pulse * stageScale);
       view.anim.animate(dt, {
         moving: !!(pet.moving || (ridden && Math.abs(this.mountSpeed) > 0.35)),
         sit: pet.sitting,
@@ -1044,6 +1191,14 @@ export class Game {
 
   befriend(wild) {
     const sp = SPECIES[wild.species];
+    if (wild.boss) {
+      this.toast(`${wild.name} will not travel with you.`);
+      return;
+    }
+    if (wild.temperament === "fight" && !wild.submitted) {
+      this.toast("They're fighting. Press F with your companion.");
+      return;
+    }
     if (this.pets.some((p) => p.species === wild.species)) {
       this.toast(`You already travel with a ${sp.name}.`);
       return;
@@ -1226,6 +1381,7 @@ export class Game {
     this.abilityCd = 1.35;
     const sp = SPECIES[pet.species];
     creatureCall(sp, pet.stage);
+    const struck = this.strikeNear(pet);
     if (this.mounted) {
       if (sp.ride?.fly) {
         this.flying = true;
@@ -1259,10 +1415,10 @@ export class Game {
       pet.z += Math.cos(pet.yaw) * 0.45;
       this.toast(`${pet.name} uses ${ability.name}.`);
     } else if (ability.kind === "strike") {
-      if (ability.id === "guard") this.tryCutBriar(pet);
-      else {
+      if (ability.id === "guard" && !struck) this.tryCutBriar(pet);
+      else if (!struck) {
         this.addGrowth(pet, 0.9);
-        this.toast(`${ability.name}. The thorns only loosen. Guard Strike finishes them.`);
+        this.toast(`${ability.name}. Nothing is close enough to hit.`);
       }
     } else if (ability.kind === "howl") {
       this.buffT = 5;

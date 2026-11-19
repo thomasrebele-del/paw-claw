@@ -1,4 +1,4 @@
-export const STAGE_ORDER = ["baby", "juvenile", "adolescent", "adult", "prime"];
+export const STAGE_ORDER = ["baby", "juvenile", "adolescent", "adult", "prime", "alpha"];
 
 export const STAGE_LABEL = {
   baby: "Baby",
@@ -6,6 +6,7 @@ export const STAGE_LABEL = {
   adolescent: "Adolescent",
   adult: "Adult",
   prime: "Prime",
+  alpha: "Alpha",
 };
 
 export const FOODS = [
@@ -72,6 +73,7 @@ function animal(partial) {
     voice: 420,
     voiceType: "triangle",
     personality: "calm",
+    temperament: "flee",
     base: { hp: 64, atk: 12, def: 8, speed: 6 },
     sizeM: 0.7,
     ride: null,
@@ -682,7 +684,23 @@ export const SPECIES = {
   }),
 };
 
-for (const key of Object.keys(SPECIES)) SPECIES[key].id = key;
+const FIGHTERS = new Set(["wolf", "cat", "lion", "tiger", "bear", "gorilla", "eagle", "owl", "aurora", "elephant"]);
+
+for (const key of Object.keys(SPECIES)) {
+  const sp = SPECIES[key];
+  sp.id = key;
+  sp.temperament = FIGHTERS.has(key) ? "fight" : "flee";
+  if (!sp.stages.includes("alpha")) sp.stages = [...sp.stages, "alpha"];
+  if (!sp.abilities.some((a) => a.stage === "alpha")) {
+    sp.abilities.push(bond("alpha-mark", "Alpha Mark", "alpha", "A larger frame, a new coat, and a presence other animals back away from."));
+  }
+}
+
+export const BOSSES = [
+  { id: "boss-thorn", species: "wolf", name: "Thorn, the Briar Alpha", x: -28, z: -42, hp: 860, scale: 2.35 },
+  { id: "boss-maw", species: "bear", name: "Maw of Greyhorn", x: 6, z: -90, hp: 1180, scale: 2.7 },
+  { id: "boss-tyrant", species: "eagle", name: "Sky Tyrant", x: 18, z: 72, hp: 740, scale: 2.45 },
+];
 
 export const SPAWNS = [
   { id: "fox", species: "fox", x: 14, z: -2 },
@@ -1034,6 +1052,7 @@ export function defaultSave() {
       reachedPeak: false,
       reachedOasis: false,
       discovered: { shiba: true },
+      bosses: [],
     },
     missionsDone: {},
   };

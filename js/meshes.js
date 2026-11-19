@@ -42,17 +42,43 @@ const AGE = {
     wing: 1.22, tusk: 1.28, hump: 1.12, swing: 0.46, freq: 0.84, hop: 0,
     waddle: 0, pudgy: 1.04,
   },
+  alpha: {
+    leg: 1.28, head: 1.18, body: 1.34, round: 0, snout: 1.2, ear: 1.25,
+    fluff: 0.2, eye: 1.45, neck: 1.2, trunk: 1.3, mane: 1.55, antler: 1.7,
+    wing: 1.48, tusk: 1.55, hump: 1.35, swing: 0.62, freq: 0.78, hop: 0,
+    waddle: 0, pudgy: 1.12,
+  },
 };
+
+let buildStage = "adult";
 
 function geo(g) {
   return g;
 }
 
 function mat(color, opts = {}) {
+  const c = new Color(color);
+  let emissive = new Color(0x000000);
+  let emissiveIntensity = 0;
+  if (buildStage === "alpha") {
+    c.offsetHSL(0.02, 0.22, -0.14);
+    emissive = new Color("#ffb15a");
+    emissiveIntensity = 0.42;
+  } else if (buildStage === "baby") {
+    c.offsetHSL(0, -0.08, 0.08);
+  } else if (buildStage === "juvenile") {
+    c.offsetHSL(0.03, -0.04, 0.04);
+  } else if (buildStage === "adolescent") {
+    c.offsetHSL(-0.02, 0.06, -0.02);
+  } else if (buildStage === "prime") {
+    c.offsetHSL(0.04, 0.1, 0.02);
+  }
   return new MeshStandardMaterial({
-    color: new Color(color),
-    roughness: opts.roughness ?? 0.84,
-    metalness: 0,
+    color: c,
+    emissive,
+    emissiveIntensity,
+    roughness: buildStage === "alpha" ? 0.42 : (opts.roughness ?? 0.72),
+    metalness: buildStage === "alpha" ? 0.22 : 0.04,
     transparent: !!opts.transparent,
     opacity: opts.opacity ?? 1,
     depthWrite: opts.depthWrite ?? true,
@@ -192,8 +218,29 @@ function stripes(parent, count, length, height, dark, softness) {
   }
 }
 
+function addAlphaMarks(pivot, species, S) {
+  const crown = new Group();
+  crown.position.set(0, S * 1.05, S * 0.15);
+  for (let i = 0; i < 5; i++) {
+    const spike = part(crown, geo(new ConeGeometry(0.045 * S, 0.28 * S, 5)), "#f2c14e", (i - 2) * 0.09 * S, 0.12 * S, 0, { shadow: false });
+    spike.rotation.z = (i - 2) * 0.18;
+  }
+  pivot.add(crown);
+  const aura = part(pivot, geo(new TorusGeometry(S * 0.55, 0.025 * S, 6, 18)), "#ffd27a", 0, 0.08, 0, {
+    rot: [Math.PI / 2, 0, 0],
+    shadow: false,
+    transparent: true,
+    opacity: 0.85,
+  });
+  aura.userData.aura = true;
+  if (species.plan === "bird") {
+    part(pivot, geo(new ConeGeometry(0.08 * S, 0.34 * S, 5)), "#f2c14e", 0, S * 0.7, S * 0.2, { shadow: false });
+  }
+}
+
 export function buildCreature(speciesId, stage, growth01 = 0, accessories = []) {
   const species = SPECIES[speciesId];
+  buildStage = stage;
   const age = blendAge(species, stage, growth01);
   const S = species.scale;
   const group = new Group();
@@ -206,6 +253,7 @@ export function buildCreature(speciesId, stage, growth01 = 0, accessories = []) 
   else if (species.plan === "elephant") buildElephant(pivot, rig, species, age, S);
   else buildQuad(pivot, rig, species, age, S);
 
+  if (stage === "alpha") addAlphaMarks(pivot, species, S);
   addAccessories(pivot, accessories, rig.neckY || S * 0.5, S * 0.25);
   if (species.personality === "playful") {
     rig.toy = part(pivot, geo(new SphereGeometry(S * 0.08, 8, 6)), "#d4543c", 0, 0.05, S * 0.4, { shadow: false });

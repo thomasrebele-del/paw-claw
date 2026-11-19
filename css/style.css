@@ -83,6 +83,12 @@ h1, h2, h3 { font-family: Fraunces, serif; font-weight: 560; margin: 0; }
 .stage.adolescent { color: var(--adolescent); }
 .stage.adult { color: var(--adult); }
 .stage.prime { color: var(--prime); }
+.stage.alpha { color: #b45309; }
+.vitals { top: 92px; right: 16px; width: 180px; padding: 10px 12px; }
+.bar.hp > span { background: #c24141; }
+.bar.boss > span { background: #7c2d12; }
+.hurt { position: absolute; inset: 0; background: rgba(160, 24, 24, 0.32); opacity: 0; pointer-events: none; transition: opacity 0.12s linear; }
+.hurt.on { opacity: 1; }
 .mount-btn, .dock button, .text-btn, .feed, .buy {
   border: 0; border-radius: 999px; background: var(--green); color: white;
   padding: 8px 12px; font-weight: 600;

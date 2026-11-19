@@ -49,6 +49,16 @@ export function createUI(game) {
       <h2 data-f="region">Greenwood Forest</h2>
     </section>
     <div class="card coins"><span data-f="coins">0</span> coins</div>
+    <section class="card vitals">
+      <p class="kicker">You</p>
+      <div class="bar hp"><span data-f="hp"></span></div>
+      <p data-f="hp-label">120 / 120</p>
+      <div data-f="boss-wrap" hidden>
+        <p class="kicker" data-f="boss-name">Boss</p>
+        <div class="bar boss"><span data-f="boss-hp"></span></div>
+      </div>
+    </section>
+    <div class="hurt" data-f="hurt"></div>
     <canvas class="minimap" data-f="minimap" width="336" height="200"></canvas>
     <section class="card mission">
       <p class="kicker">Your adventure</p>
@@ -326,6 +336,17 @@ export function createUI(game) {
       q("clock").textContent = game.clockLabel();
       q("region").textContent = regionName(game.player.x, game.player.z);
       q("coins").textContent = String(game.coins);
+      const hpPct = Math.max(0, game.player.hp / game.player.maxHp);
+      q("hp").style.width = `${Math.round(hpPct * 100)}%`;
+      q("hp-label").textContent = `${Math.ceil(game.player.hp)} / ${game.player.maxHp}`;
+      q("hurt").classList.toggle("on", game.player.hit > 0);
+      const boss = game.wilds.find((w) => w.boss && !w.down && Math.hypot(w.x - game.player.x, w.z - game.player.z) < 32);
+      const bossWrap = q("boss-wrap");
+      if (boss) {
+        bossWrap.hidden = false;
+        q("boss-name").textContent = boss.name;
+        q("boss-hp").style.width = `${Math.max(0, Math.round((boss.hp / boss.maxHp) * 100))}%`;
+      } else bossWrap.hidden = true;
       const mission = game.currentMission();
       const snap = { pets: game.pets, stats: game.stats };
       if (mission) {
