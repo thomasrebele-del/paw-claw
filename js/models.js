@@ -31,20 +31,26 @@ export function preloadAnimals() {
   const files = [...new Set(Object.values(FILES))];
   return Promise.all(files.map((file) => loader.loadAsync(`models/${file}`).then((gltf) => {
     const root = gltf.scene;
-    const box = new Box3().setFromObject(root);
-    const size = new Vector3();
-    box.getSize(size);
-    const longest = Math.max(size.x, size.y, size.z, 0.001);
-    const fit = 1.35 / longest;
-    root.scale.multiplyScalar(fit);
-    root.position.y -= box.min.y * fit;
     root.traverse((obj) => {
       if (obj.isMesh) {
         obj.castShadow = true;
         obj.receiveShadow = true;
       }
     });
-    templates.set(file, root);
+    const stand = new Group();
+    stand.rotation.x = -Math.PI / 2;
+    const face = new Group();
+    face.rotation.y = Math.PI / 2;
+    face.add(stand);
+    stand.add(root);
+    const box = new Box3().setFromObject(face);
+    const size = new Vector3();
+    box.getSize(size);
+    const longest = Math.max(size.x, size.y, size.z, 0.001);
+    const fit = 1.35 / longest;
+    face.scale.multiplyScalar(fit);
+    face.position.y -= box.min.y * fit;
+    templates.set(file, face);
   }))).then(() => {
     ready = true;
   });
