@@ -9,6 +9,7 @@ import {
   ConeGeometry,
   Mesh,
   MeshBasicMaterial,
+  PCFSoftShadowMap,
   PerspectiveCamera,
   RingGeometry,
   Scene,
@@ -133,17 +134,18 @@ export class Game {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = PCFSoftShadowMap;
     this.renderer.outputColorSpace = SRGBColorSpace;
     this.renderer.toneMapping = ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.16;
+    this.renderer.toneMappingExposure = 1.02;
 
     this.world = createWorld(this.scene);
-    this.hemi = new HemisphereLight("#fff4dc", "#8fb56a", 0.95);
+    this.hemi = new HemisphereLight("#cfe6ff", "#6d8a52", 0.72);
     this.scene.add(this.hemi);
-    this.sun = new DirectionalLight("#fff1d2", 1.35);
+    this.sun = new DirectionalLight("#fff4e0", 1.65);
     this.sun.position.set(30, 48, 16);
     this.sun.castShadow = true;
-    this.sun.shadow.mapSize.set(1024, 1024);
+    this.sun.shadow.mapSize.set(2048, 2048);
     this.sun.shadow.camera.near = 2;
     this.sun.shadow.camera.far = 90;
     this.sun.shadow.camera.left = -26;
@@ -157,8 +159,8 @@ export class Game {
     const rim = new DirectionalLight("#9fd0ff", 0.7);
     rim.position.set(-24, 18, -16);
     this.scene.add(rim);
-    this.scene.background = new Color("#b9e2f6");
-    if (this.scene.fog) this.scene.fog.color.set("#d7efe4");
+    this.scene.background = new Color("#8fbfdc");
+    if (this.scene.fog) this.scene.fog.color.set("#b7cfc0");
 
     this.person = buildPerson();
     this.scene.add(this.person.group);

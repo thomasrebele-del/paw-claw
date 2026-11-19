@@ -1,5 +1,6 @@
 import {
   BoxGeometry,
+  CanvasTexture,
   CircleGeometry,
   Color,
   ConeGeometry,
@@ -7,7 +8,9 @@ import {
   Group,
   Mesh,
   MeshStandardMaterial,
+  RepeatWrapping,
   SphereGeometry,
+  SRGBColorSpace,
   TorusGeometry,
 } from "../vendor/three.module.js";
 import { SPECIES, nextStage } from "./data.js";
@@ -52,6 +55,41 @@ const AGE = {
 
 let buildStage = "adult";
 
+const texCache = new Map();
+
+function canvasTex(key, draw, repeat = 2) {
+  if (texCache.has(key)) return texCache.get(key);
+  const canvas = document.createElement("canvas");
+  canvas.width = 128;
+  canvas.height = 128;
+  draw(canvas.getContext("2d"), canvas.width);
+  const tex = new CanvasTexture(canvas);
+  tex.colorSpace = SRGBColorSpace;
+  tex.wrapS = RepeatWrapping;
+  tex.wrapT = RepeatWrapping;
+  tex.repeat.set(repeat, repeat);
+  texCache.set(key, tex);
+  return tex;
+}
+
+function furTex() {
+  return canvasTex("fur", (g, n) => {
+    g.fillStyle = "#ffffff";
+    g.fillRect(0, 0, n, n);
+    for (let i = 0; i < 900; i++) {
+      const x = Math.random() * n;
+      const y = Math.random() * n;
+      const shade = 150 + Math.floor(Math.random() * 90);
+      g.strokeStyle = `rgba(${shade},${shade - 8},${shade - 18},0.45)`;
+      g.lineWidth = 1;
+      g.beginPath();
+      g.moveTo(x, y);
+      g.lineTo(x + (Math.random() - 0.5) * 1.5, y + 2 + Math.random() * 6);
+      g.stroke();
+    }
+  }, 3);
+}
+
 function geo(g) {
   return g;
 }
@@ -75,10 +113,11 @@ function mat(color, opts = {}) {
   }
   return new MeshStandardMaterial({
     color: c,
+    map: opts.map === false ? null : furTex(),
     emissive,
-    emissiveIntensity,
-    roughness: buildStage === "alpha" ? 0.42 : (opts.roughness ?? 0.72),
-    metalness: buildStage === "alpha" ? 0.22 : 0.04,
+    emissiveIntensity: buildStage === "alpha" ? 0.12 : emissiveIntensity,
+    roughness: opts.roughness ?? (buildStage === "alpha" ? 0.55 : 0.82),
+    metalness: 0.02,
     transparent: !!opts.transparent,
     opacity: opts.opacity ?? 1,
     depthWrite: opts.depthWrite ?? true,
@@ -135,7 +174,8 @@ function leg(parent, x, y, z, height, radius, color) {
 function eyePair(parent, spread, y, z, size, dark) {
   for (const side of [-1, 1]) {
     part(parent, geo(new SphereGeometry(size, 8, 6)), "#f7f4ee", side * spread, y, z, { shadow: false });
-    part(parent, geo(new SphereGeometry(size * 0.48, 6, 5)), dark, side * spread, y, z + size * 0.7, { shadow: false });
+    part(parent, geo(new SphereGeometry(size * 0.48, 8, 6)), dark, side * spread, y, z + size * 0.55, { shadow: false, map: false, roughness: 0.25 });
+    part(parent, geo(new SphereGeometry(size * 0.16, 6, 4)), "#ffffff", side * spread + size * 0.12, y + size * 0.18, z + size * 0.85, { shadow: false, map: false, roughness: 0.1 });
   }
 }
 

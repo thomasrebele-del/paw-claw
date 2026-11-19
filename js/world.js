@@ -1,6 +1,7 @@
 import {
   BoxGeometry,
   BufferAttribute,
+  CanvasTexture,
   CircleGeometry,
   Color,
   ConeGeometry,
@@ -12,7 +13,9 @@ import {
   MeshStandardMaterial,
   Object3D,
   PlaneGeometry,
+  RepeatWrapping,
   SphereGeometry,
+  SRGBColorSpace,
 } from "../vendor/three.module.js";
 import { buildButterfly, buildTree } from "./meshes.js";
 
@@ -107,8 +110,8 @@ function tint(region, y, river) {
 }
 
 export function createWorld(scene) {
-  scene.fog = new Fog("#e7f3df", 42, 150);
-  scene.background = new Color("#d5ecf8");
+  scene.fog = new Fog("#c5d7c8", 28, 120);
+  scene.background = new Color("#9ec8e6");
 
   const size = 250;
   const seg = 110;
@@ -129,9 +132,25 @@ export function createWorld(scene) {
   }
   geo.setAttribute("color", new BufferAttribute(colors, 3));
   geo.computeVertexNormals();
+  const grass = document.createElement("canvas");
+  grass.width = 128;
+  grass.height = 128;
+  const gg = grass.getContext("2d");
+  gg.fillStyle = "#d7e7b0";
+  gg.fillRect(0, 0, 128, 128);
+  for (let i = 0; i < 1400; i++) {
+    const shade = 90 + Math.floor(Math.random() * 80);
+    gg.fillStyle = `rgba(${shade - 20},${shade + 30},${shade - 30},0.35)`;
+    gg.fillRect(Math.random() * 128, Math.random() * 128, 1, 3 + Math.random() * 4);
+  }
+  const grassMap = new CanvasTexture(grass);
+  grassMap.colorSpace = SRGBColorSpace;
+  grassMap.wrapS = RepeatWrapping;
+  grassMap.wrapT = RepeatWrapping;
+  grassMap.repeat.set(48, 48);
   const terrain = new Mesh(
     geo,
-    new MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 }),
+    new MeshStandardMaterial({ map: grassMap, vertexColors: true, roughness: 0.92, metalness: 0 }),
   );
   terrain.receiveShadow = true;
   scene.add(terrain);
@@ -152,7 +171,7 @@ export function createWorld(scene) {
 
   const water = new Mesh(
     new PlaneGeometry(7.5, 62),
-    new MeshStandardMaterial({ color: "#8ec7d4", roughness: 0.2, metalness: 0.04, transparent: true, opacity: 0.82 }),
+    new MeshStandardMaterial({ color: "#3e8ea3", roughness: 0.08, metalness: 0.18, transparent: true, opacity: 0.86 }),
   );
   water.rotation.x = -Math.PI / 2;
   water.position.set(32, -0.15, 14);
