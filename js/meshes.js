@@ -218,6 +218,75 @@ function stripes(parent, count, length, height, dark, softness) {
   }
 }
 
+function addSpeciesDetail(pivot, species, S) {
+  const id = species.id;
+  const c = species.colors;
+  const y = S * 0.72;
+  const mark = (geometry, color, x, yy, z, opts) => part(pivot, geo(geometry), color, x, yy, z, { shadow: false, ...opts });
+  if (id === "shiba") {
+    mark(new SphereGeometry(0.06 * S, 8, 6), "#fff7ea", 0.08 * S, y, 0.42 * S);
+    mark(new SphereGeometry(0.06 * S, 8, 6), "#fff7ea", -0.08 * S, y, 0.42 * S);
+    mark(new TorusGeometry(0.07 * S, 0.018 * S, 6, 10), c.accent, 0, y * 0.55, -0.42 * S, { rot: [0.4, 0, 0.8] });
+  } else if (id === "retriever") {
+    mark(new BoxGeometry(0.05 * S, 0.04 * S, 0.22 * S), "#f4efe4", 0, y * 0.35, 0.15 * S);
+    mark(new SphereGeometry(0.09 * S, 8, 6), c.accent, 0, y * 0.4, -0.55 * S);
+  } else if (id === "fox") {
+    mark(new ConeGeometry(0.04 * S, 0.16 * S, 5), "#f6f1e6", 0, y * 0.2, 0.48 * S);
+    mark(new BoxGeometry(0.03 * S, 0.22 * S, 0.08 * S), "#fffaf2", 0, y * 0.5, -0.55 * S);
+  } else if (id === "cat") {
+    for (const side of [-1, 1]) mark(new BoxGeometry(0.012 * S, 0.05 * S, 0.012 * S), "#2a241c", side * 0.05 * S, y * 0.95, 0.28 * S);
+    mark(new TorusGeometry(0.05 * S, 0.012 * S, 5, 8), c.dark, 0, y * 0.35, -0.4 * S, { rot: [0.2, 0, 1] });
+  } else if (id === "rabbit") {
+    mark(new SphereGeometry(0.05 * S, 8, 6), "#fff", 0, y * 0.25, 0.38 * S);
+    mark(new SphereGeometry(0.07 * S, 8, 6), "#fff", 0, y * 0.3, -0.28 * S);
+  } else if (id === "wolf") {
+    mark(new BoxGeometry(0.16 * S, 0.03 * S, 0.28 * S), "#1c2430", 0, y * 1.05, 0.05 * S);
+    mark(new ConeGeometry(0.03 * S, 0.1 * S, 5), "#e8e4dc", 0.06 * S, y * 0.85, 0.32 * S);
+  } else if (id === "deer") {
+    for (const side of [-1, 1]) {
+      mark(new CylinderGeometry(0.01 * S, 0.012 * S, 0.16 * S, 5), "#6b4a2a", side * 0.08 * S, y * 1.35, 0.12 * S, { rot: [0, 0, side * 0.6] });
+    }
+    mark(new SphereGeometry(0.04 * S, 6, 5), "#f2e2c4", 0, y * 0.4, 0.4 * S);
+  } else if (id === "bear") {
+    mark(new SphereGeometry(0.11 * S, 8, 6), c.belly, 0, y * 0.55, 0.22 * S);
+    mark(new BoxGeometry(0.18 * S, 0.04 * S, 0.06 * S), "#2a2118", 0, y * 0.2, 0.48 * S);
+  } else if (id === "horse") {
+    mark(new BoxGeometry(0.04 * S, 0.28 * S, 0.12 * S), "#1a120c", 0, y * 1.15, 0.18 * S);
+    mark(new BoxGeometry(0.12 * S, 0.03 * S, 0.04 * S), "#f4f0e6", 0, y * 0.35, 0.5 * S);
+  } else if (id === "zebra") {
+    for (let i = 0; i < 4; i++) mark(new BoxGeometry(0.22 * S, 0.025 * S, 0.04 * S), "#111", 0, y * (0.4 + i * 0.12), (i - 1.5) * 0.08 * S);
+  } else if (id === "lion") {
+    mark(new SphereGeometry(0.2 * S, 10, 8), "#c47a2a", 0, y * 0.95, 0.02 * S);
+    mark(new ConeGeometry(0.025 * S, 0.08 * S, 4), "#f4e2b0", 0, y * 0.7, 0.42 * S);
+  } else if (id === "tiger") {
+    for (let i = 0; i < 5; i++) mark(new BoxGeometry(0.2 * S, 0.02 * S, 0.035 * S), "#1a120c", 0, y * 0.55, (i - 2) * 0.08 * S);
+    mark(new BoxGeometry(0.03 * S, 0.08 * S, 0.12 * S), "#f6f1e6", 0, y * 0.15, -0.48 * S);
+  } else if (id === "elephant") {
+    mark(new SphereGeometry(0.05 * S, 6, 5), "#f7f4ee", 0.12 * S, y * 0.55, 0.55 * S);
+    mark(new SphereGeometry(0.05 * S, 6, 5), "#f7f4ee", -0.12 * S, y * 0.55, 0.55 * S);
+  } else if (id === "camel") {
+    mark(new SphereGeometry(0.12 * S, 8, 6), c.dark, 0, y * 1.15, -0.05 * S);
+    mark(new BoxGeometry(0.08 * S, 0.02 * S, 0.16 * S), "#6a4028", 0, y * 0.9, 0.2 * S);
+  } else if (id === "gorilla") {
+    mark(new BoxGeometry(0.22 * S, 0.06 * S, 0.08 * S), "#1a120e", 0, y * 0.85, 0.12 * S);
+    mark(new SphereGeometry(0.06 * S, 6, 5), "#c4a090", 0, y * 0.4, 0.28 * S);
+  } else if (id === "goat") {
+    mark(new ConeGeometry(0.03 * S, 0.18 * S, 5), "#d9d3c4", 0.06 * S, y * 1.2, 0.12 * S, { rot: [0.2, 0, -0.5] });
+    mark(new ConeGeometry(0.03 * S, 0.18 * S, 5), "#d9d3c4", -0.06 * S, y * 1.2, 0.12 * S, { rot: [0.2, 0, 0.5] });
+    mark(new BoxGeometry(0.1 * S, 0.02 * S, 0.04 * S), "#f4f0e6", 0, y * 0.55, 0.32 * S);
+  } else if (id === "eagle") {
+    mark(new ConeGeometry(0.04 * S, 0.22 * S, 5), "#f2c14e", 0, y * 1.15, 0.35 * S);
+    mark(new BoxGeometry(0.28 * S, 0.015 * S, 0.08 * S), "#f6f1e6", 0, y * 0.7, 0);
+  } else if (id === "owl") {
+    mark(new TorusGeometry(0.07 * S, 0.012 * S, 6, 12), "#f4e7a8", 0.07 * S, y * 0.95, 0.22 * S);
+    mark(new TorusGeometry(0.07 * S, 0.012 * S, 6, 12), "#f4e7a8", -0.07 * S, y * 0.95, 0.22 * S);
+    mark(new ConeGeometry(0.025 * S, 0.1 * S, 4), "#e0a040", 0, y * 0.72, 0.32 * S);
+  } else if (id === "aurora") {
+    mark(new TorusGeometry(0.18 * S, 0.012 * S, 6, 16), "#7ee0ff", 0, y * 0.8, 0, { rot: [Math.PI / 2, 0, 0] });
+    mark(new SphereGeometry(0.05 * S, 8, 6), "#d7fff4", 0, y * 1.2, 0.1 * S);
+  }
+}
+
 function addAlphaMarks(pivot, species, S) {
   const crown = new Group();
   crown.position.set(0, S * 1.05, S * 0.15);
@@ -253,6 +322,7 @@ export function buildCreature(speciesId, stage, growth01 = 0, accessories = []) 
   else if (species.plan === "elephant") buildElephant(pivot, rig, species, age, S);
   else buildQuad(pivot, rig, species, age, S);
 
+  addSpeciesDetail(pivot, species, S);
   if (stage === "alpha") addAlphaMarks(pivot, species, S);
   addAccessories(pivot, accessories, rig.neckY || S * 0.5, S * 0.25);
   if (species.personality === "playful") {

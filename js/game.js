@@ -5,12 +5,15 @@ import {
   DirectionalLight,
   DoubleSide,
   HemisphereLight,
+  BoxGeometry,
+  ConeGeometry,
   Mesh,
   MeshBasicMaterial,
   PerspectiveCamera,
   RingGeometry,
   Scene,
   SphereGeometry,
+  TorusGeometry,
   MeshStandardMaterial,
   SRGBColorSpace,
   Vector3,
@@ -69,6 +72,28 @@ function persist(data) {
 export function clearSave() {
   localStorage.removeItem(SAVE_KEY);
 }
+
+const ATTACKS = {
+  shiba: { name: "Yip Burst", color: "#f2c14e", kind: "spark" },
+  retriever: { name: "Loyal Charge", color: "#e7d3a1", kind: "cone" },
+  fox: { name: "Brush Flick", color: "#e26a2c", kind: "slash" },
+  cat: { name: "Claw Rake", color: "#d8d2c8", kind: "slash" },
+  rabbit: { name: "Thump", color: "#f4efe4", kind: "ring" },
+  wolf: { name: "Fang Howl", color: "#9eb0c8", kind: "ring" },
+  deer: { name: "Antler Sweep", color: "#c4a574", kind: "slash" },
+  bear: { name: "Maul", color: "#6b4a32", kind: "cone" },
+  horse: { name: "Kick", color: "#8a5a32", kind: "spark" },
+  zebra: { name: "Stripe Kick", color: "#f4f4f4", kind: "slash" },
+  lion: { name: "Roar", color: "#e0a040", kind: "ring" },
+  tiger: { name: "Pounce", color: "#e07a2f", kind: "cone" },
+  elephant: { name: "Trunk Blast", color: "#9aa0a8", kind: "cone" },
+  camel: { name: "Sand Spit", color: "#d2b48c", kind: "spark" },
+  gorilla: { name: "Chest Slam", color: "#4a3428", kind: "ring" },
+  goat: { name: "Horn Butt", color: "#d9d3c4", kind: "cone" },
+  eagle: { name: "Talon Dive", color: "#f2c14e", kind: "slash" },
+  owl: { name: "Silent Stoop", color: "#c9b27a", kind: "spark" },
+  aurora: { name: "Prism Beam", color: "#7ee0ff", kind: "cone" },
+};
 
 function clamp(v, a, b) {
   return Math.max(a, Math.min(b, v));
@@ -485,7 +510,12 @@ export class Game {
   }
 
   hurtPlayer(wild) {
-    const dmg = wild.boss ? (wild.hp < wild.maxHp * 0.35 ? 34 : 24) : 9;
+    let dmg = wild.boss ? (wild.hp < wild.maxHp * 0.35 ? 34 : 24) : 9;
+    const guard = this.pets.find((pet) => !(this.mounted && this.mountUid === pet.uid) && Math.hypot(pet.x - this.player.x, pet.z - this.player.z) < 3.4);
+    if (guard) {
+      dmg = Math.max(1, Math.round(dmg * 0.4));
+      this.toast(`${guard.name} steps in front of you.`);
+    }
     this.player.hp -= dmg;
     this.player.hit = 0.35;
     const away = Math.atan2(this.player.x - wild.x, this.player.z - wild.z);
@@ -501,6 +531,21 @@ export class Game {
       this.player.y = heightAt(0, 20);
       this.ui?.banner("You were driven back to camp.");
     }
+  }
+
+  nearestFoe(x, z, range) {
+    let best = null;
+    let bestD = range;
+    for (const wild of this.wilds) {
+      if (wild.down || wild.submitted) continue;
+      if (wild.temperament !== "fight" && !wild.boss) continue;
+      const d = Math.hypot(x - wild.x, z - wild.z);
+      if (d < bestD) {
+        best = wild;
+        bestD = d;
+      }
+    }
+    return best;
   }
 
   strikeNear(pet) {
@@ -525,9 +570,10 @@ export class Game {
     if (best.boss) dmg = Math.max(1, Math.round(dmg * 0.42));
     best.hp -= dmg;
     best.flash = 0.18;
-    this.burst(best.x, heightAt(best.x, best.z) + 0.8, best.z);
+    this.attackFx(pet, best);
+    const fx = ATTACKS[pet.species] || ATTACKS.shiba;
     if (best.hp <= 0) this.defeatWild(best);
-    else this.toast(`${dmg} damage. ${best.boss ? best.name : SPECIES[best.species].name} has ${Math.max(0, Math.ceil(best.hp))} left.`);
+    else this.toast(`${fx.name} for ${dmg}. ${Math.max(0, Math.ceil(best.hp))} left.`);
     return true;
   }
 
@@ -827,7 +873,18 @@ export class Game {
         let tx;
         let tz;
         let stop;
-        if (active) {
+        const foe = this.nearestFoe(this.player.x, this.player.z, 11);
+        pet.guardCd = Math.max(0, (pet.guardCd || 0) - dt);
+        if (foe && Math.hypot(pet.x - this.player.x, pet.z - this.player.z) < 18) {
+          tx = foe.x;
+          tz = foe.z;
+          stop = 1.15;
+          if (Math.hypot(pet.x - foe.x, pet.z - foe.z) < 2.5 && pet.guardCd <= 0) {
+            pet.yaw = Math.atan2(foe.x - pet.x, foe.z - pet.z);
+            this.strikeNear(pet);
+            pet.guardCd = 1.35;
+          }
+        } else if (active) {
           const dest = this.petDestination(pet, dt);
           tx = dest.x;
           tz = dest.z;
@@ -1024,12 +1081,58 @@ export class Game {
     this.ui?.refresh();
   }
 
+  attackFx(pet, wild) {
+    const fx = ATTACKS[pet.species] || ATTACKS.shiba;
+    const x = wild.x;
+    const y = heightAt(wild.x, wild.z) + 0.7;
+    const z = wild.z;
+    const color = fx.color;
+    if (fx.kind === "ring") {
+      const ring = new Mesh(new TorusGeometry(0.15, 0.03, 6, 14), new MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.8 }));
+      ring.position.set(x, y, z);
+      ring.rotation.x = Math.PI / 2;
+      ring.userData.v = new Vector3(0, 0.4, 0);
+      ring.userData.life = 0.7;
+      ring.userData.grow = 3.2;
+      this.scene.add(ring);
+      this.bits.push(ring);
+    } else if (fx.kind === "slash") {
+      for (let i = 0; i < 3; i++) {
+        const mesh = new Mesh(new BoxGeometry(0.08, 0.02, 0.7), new MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.9 }));
+        mesh.position.set(x, y + i * 0.08, z);
+        mesh.rotation.y = pet.yaw + (i - 1) * 0.35;
+        mesh.userData.v = new Vector3(Math.sin(pet.yaw) * 2, 0.4, Math.cos(pet.yaw) * 2);
+        mesh.userData.life = 0.35;
+        this.scene.add(mesh);
+        this.bits.push(mesh);
+      }
+    } else if (fx.kind === "cone") {
+      const mesh = new Mesh(new ConeGeometry(0.18, 0.7, 6), new MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.7 }));
+      mesh.position.set(x, y, z);
+      mesh.rotation.x = Math.PI / 2;
+      mesh.userData.v = new Vector3(Math.sin(pet.yaw) * 4, 0.2, Math.cos(pet.yaw) * 4);
+      mesh.userData.life = 0.4;
+      this.scene.add(mesh);
+      this.bits.push(mesh);
+    } else {
+      for (let i = 0; i < 10; i++) {
+        const mesh = new Mesh(this.bitGeo, new MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.6 }));
+        mesh.position.set(x, y, z);
+        mesh.userData.v = new Vector3((Math.random() - 0.5) * 4, 1.2 + Math.random() * 2, (Math.random() - 0.5) * 4);
+        mesh.userData.life = 0.7;
+        this.scene.add(mesh);
+        this.bits.push(mesh);
+      }
+    }
+  }
+
   burst(x, y, z) {
     for (let i = 0; i < 16; i++) {
       const mesh = new Mesh(this.bitGeo, new MeshStandardMaterial({ color: i % 2 ? "#f2d48a" : "#fffaf2" }));
       mesh.position.set(x, y, z);
       mesh.userData.v = new Vector3((Math.random() - 0.5) * 3.2, 1.8 + Math.random() * 2.2, (Math.random() - 0.5) * 3.2);
       mesh.userData.life = 1.05;
+      mesh.userData.grow = 0;
       this.scene.add(mesh);
       this.bits.push(mesh);
     }
@@ -1040,8 +1143,8 @@ export class Game {
       mesh.userData.life -= dt;
       mesh.userData.v.y -= 3.5 * dt;
       mesh.position.addScaledVector(mesh.userData.v, dt);
-      const s = Math.max(0.01, mesh.userData.life);
-      mesh.scale.setScalar(s);
+      if (mesh.userData.grow) mesh.scale.setScalar(0.4 + (1 - Math.max(0, mesh.userData.life)) * mesh.userData.grow);
+      else mesh.scale.setScalar(Math.max(0.01, mesh.userData.life));
     }
     this.bits = this.bits.filter((mesh) => {
       if (mesh.userData.life > 0) return true;
