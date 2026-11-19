@@ -217,9 +217,10 @@ function leg(parent, x, y, z, height, radius, color) {
 
 function eyePair(parent, spread, y, z, size, dark) {
   for (const side of [-1, 1]) {
-    part(parent, geo(new SphereGeometry(size, 10, 8)), "#f3efe8", side * spread, y, z, { shadow: false, map: false, roughness: 0.35 });
-    part(parent, geo(new SphereGeometry(size * 0.62, 10, 8)), eyeColor, side * spread, y, z + size * 0.35, { shadow: false, map: false, roughness: 0.22 });
-    part(parent, geo(new SphereGeometry(size * 0.28, 8, 6)), "#140e0c", side * spread, y, z + size * 0.72, { shadow: false, map: false, roughness: 0.18 });
+    part(parent, geo(new SphereGeometry(size, 10, 8)), dark || "#2a211c", side * spread, y, z, { shadow: false, map: false, roughness: 0.4 });
+    const iris = part(parent, geo(new SphereGeometry(size * 0.7, 10, 8)), eyeColor, side * spread, y, z + size * 0.18, { shadow: false, map: false, roughness: 0.2 });
+    iris.scale.set(1, 0.88, 0.45);
+    part(parent, geo(new SphereGeometry(size * 0.3, 8, 6)), "#120e0c", side * spread, y, z + size * 0.38, { shadow: false, map: false, roughness: 0.15 });
     part(parent, geo(new SphereGeometry(size * 0.1, 6, 4)), "#ffffff", side * spread + size * 0.16, y + size * 0.16, z + size * 0.9, { shadow: false, map: false, roughness: 0.05 });
   }
 }
@@ -449,16 +450,16 @@ export function buildCreature(speciesId, stage, growth01 = 0, accessories = []) 
       }
       pivot.rotation.z = Math.sin(this.phase * 0.45) * 0.16 * age.waddle;
       if (rig.head) {
-        rig.head.rotation.x = Math.sin(this.phase * 0.4) * 0.08 + (motion.play ? 0.55 : 0);
-        rig.head.rotation.y = Math.sin(this.phase * 0.22) * (moving ? 0.04 : 0.18);
+        rig.head.rotation.x = (rig.headBaseX || 0) + Math.sin(this.phase * 0.4) * 0.06 + (motion.play ? 0.35 : 0);
+        rig.head.rotation.y = Math.sin(this.phase * 0.22) * (moving ? 0.04 : 0.12);
       }
       rig.ears.forEach((ear, i) => {
-        const sign = i % 2 === 0 ? -1 : 1;
-        ear.rotation.z = sign * (0.15 + Math.sin(this.phase * 1.6 + i) * 0.18 * (0.3 + age.fluff));
+        const sign = i % 2 === 0 ? 1 : -1;
+        ear.rotation.z = sign * (0.12 + Math.sin(this.phase * 1.6 + i) * 0.08 * (0.3 + age.fluff));
       });
       if (rig.tail) {
-        rig.tail.rotation.y = Math.sin(this.phase * (age.fluff > 0.4 ? 2.2 : 1.1)) * (0.35 + age.fluff * 0.4);
-        rig.tail.rotation.x = -0.35 * (1 - age.fluff) + Math.sin(this.phase) * 0.08;
+        rig.tail.rotation.y = Math.sin(this.phase * (age.fluff > 0.4 ? 2.2 : 1.1)) * (0.2 + age.fluff * 0.25);
+        rig.tail.rotation.x = (rig.tailBaseX || 0) + Math.sin(this.phase) * 0.05;
       }
       const flap = (motion.flapStrong ? 0.95 : motion.flap ? 0.35 : 0) * (0.35 + age.wing);
       rig.wings.forEach((wing, i) => {
@@ -486,15 +487,15 @@ export function buildCreature(speciesId, stage, growth01 = 0, accessories = []) 
 }
 
 const SHAPE = {
-  shiba: { leg: 0.82, len: 0.86, chest: 1.12, head: 0.95, snout: 0.72, neck: 0.62, ear: 0.85, tailUp: 1.35, bib: 1 },
+  shiba: { leg: 0.78, len: 0.88, chest: 1.28, head: 1.08, snout: 0.78, neck: 0.75, ear: 0.9, tailUp: 1.15, bib: 1 },
   retriever: { leg: 0.98, len: 1.08, chest: 1.02, snout: 1.05, neck: 0.8, ear: 1.15 },
-  fox: { leg: 0.92, len: 1.1, chest: 0.8, head: 0.82, snout: 1.2, neck: 0.72, ear: 1.35, tail: 1.5, socks: 1 },
+  fox: { leg: 0.78, len: 0.95, chest: 1.15, head: 0.95, snout: 1.15, neck: 0.8, ear: 1.45, tail: 1.2, socks: 1 },
   cat: { leg: 0.68, len: 1.02, chest: 0.78, head: 1.08, snout: 0.42, neck: 0.5, ear: 0.9, tail: 1.25 },
   rabbit: { leg: 0.52, len: 0.78, chest: 1.2, head: 1.05, snout: 0.35, neck: 0.35, ear: 1.7 },
-  wolf: { leg: 1.2, len: 1.14, chest: 1.08, head: 0.9, snout: 1.35, neck: 1.05, ear: 0.9, ruff: 1 },
+  wolf: { leg: 1.02, len: 1.0, chest: 1.22, head: 0.88, snout: 1.35, neck: 0.95, ear: 0.95, ruff: 1 },
   deer: { leg: 1.48, len: 1.02, chest: 0.72, head: 0.68, snout: 1.1, neck: 1.65, ear: 1.15 },
   bear: { leg: 0.58, len: 1.18, chest: 1.4, head: 0.82, snout: 0.65, neck: 0.38, ear: 0.6 },
-  horse: { leg: 1.42, len: 1.16, chest: 1.02, head: 0.6, snout: 1.5, neck: 1.75, ear: 0.7, mane: 1, tail: 1.2 },
+  horse: { leg: 1.15, len: 1.0, chest: 1.35, head: 0.72, snout: 1.35, neck: 1.15, ear: 0.75, mane: 1, tail: 1.1 },
   zebra: { leg: 1.36, len: 1.12, chest: 0.98, head: 0.62, snout: 1.4, neck: 1.6, ear: 0.75, mane: 1, tail: 1.15 },
   lion: { leg: 1.05, len: 1.22, chest: 1.12, snout: 0.8, neck: 0.85, ear: 0.7 },
   tiger: { leg: 1.02, len: 1.3, chest: 1.02, snout: 0.85, neck: 0.8, ear: 0.65, tail: 1.15 },
@@ -538,7 +539,7 @@ function buildQuad(pivot, rig, species, age, S) {
   const neckLen = Math.max(0.12, 0.28 * S * species.neck * age.neck * (sh.neck || 1));
   const neck = new Group();
   neck.position.set(0, bodyH * 0.22, bodyLen * 0.34);
-  neck.rotation.x = species.neck > 1.2 ? -0.85 : -0.45;
+  neck.rotation.x = species.neck > 1.2 ? 0.7 : 0.48;
   body.add(neck);
   const neckMesh = part(neck, geo(new CapsuleGeometry(Math.max(0.04, bodyW * 0.28), neckLen * 0.55, 5, 10)), c.body, 0, neckLen * 0.42, 0);
   neckMesh.scale.set(1, 1, 0.85);
@@ -562,15 +563,17 @@ function buildQuad(pivot, rig, species, age, S) {
   const headR = 0.2 * S * species.bulk * age.head * (sh.head || 1);
   const head = new Group();
   head.position.set(0, neckLen * 0.92, 0);
-  head.rotation.x = species.neck > 1.2 ? 0.55 : 0.25;
+  head.rotation.x = species.neck > 1.2 ? 0.15 : -0.35;
+  rig.headBaseX = head.rotation.x;
   neck.add(head);
   rig.head = head;
   part(head, geo(new SphereGeometry(headR, 20, 16)), c.body, 0, 0, 0);
   const snout = part(head, geo(new SphereGeometry(headR * (0.32 + age.snout * 0.22), 14, 10)), age.snout > 0.7 ? c.body : c.belly, 0, -headR * 0.18, headR * 0.78, {
     scale: [0.85, 0.62, (0.7 + age.snout * 0.9) * (sh.snout || 1)],
   });
-  part(head, geo(new SphereGeometry(headR * 0.1, 8, 6)), "#2a211c", 0, -headR * 0.12, headR * (0.95 + age.snout * 0.55), { shadow: false, map: false, roughness: 0.35 });
-  part(head, geo(new BoxGeometry(headR * 0.28, headR * 0.03, headR * 0.08)), "#3a2a24", 0, -headR * 0.32, headR * 0.9, { shadow: false, map: false });
+  const snoutReach = headR * (0.85 + (sh.snout || 1) * 0.55);
+  part(head, geo(new SphereGeometry(headR * 0.1, 8, 6)), "#2a211c", 0, -headR * 0.16, snoutReach, { shadow: false, map: false, roughness: 0.35 });
+  part(head, geo(new BoxGeometry(headR * 0.22, headR * 0.025, headR * 0.06)), "#3a2a24", 0, -headR * 0.28, snoutReach * 0.85, { shadow: false, map: false });
   eyePair(head, headR * 0.38, headR * 0.15, headR * 0.72, headR * 0.16 * age.eye, c.dark);
   rig.ears = ears(head, species, age, S, headR);
   if (sh.ear) rig.ears.forEach((ear) => ear.scale.multiplyScalar(sh.ear));
@@ -607,14 +610,26 @@ function buildQuad(pivot, rig, species, age, S) {
   const tailLen = (species.tail === "stub" ? 0.12 : 0.42) * S * (0.45 + (1 - age.fluff) * 0.7) * (sh.tail || 1);
   const tail = new Group();
   tail.position.set(0, bodyY + bodyH * 0.1, -bodyLen * 0.5);
-  if (species.tail !== "none") {
+  if (species.tail === "curl") {
+    part(tail, geo(new TorusGeometry(bodyH * 0.28, bodyH * 0.12, 8, 14, Math.PI * 1.4)), c.body, 0, bodyH * 0.15, 0, { rot: [0, Math.PI / 2, 0], shadow: false });
+    rig.tailBaseX = 0.2;
+  } else if (species.tail === "brush") {
+    const brush = part(tail, geo(new SphereGeometry(bodyH * 0.32, 12, 10)), c.body, 0, -bodyH * 0.1, -bodyLen * 0.35, { shadow: false });
+    brush.scale.set(0.7, 0.7, 2.2);
+    part(tail, geo(new SphereGeometry(bodyH * 0.16, 8, 6)), "#f4efe6", 0, -bodyH * 0.15, -bodyLen * 0.72, { shadow: false });
+    rig.tailBaseX = 0.45;
+  } else if (species.tail === "long") {
+    const hair = part(tail, geo(new SphereGeometry(bodyH * 0.16, 10, 8)), c.dark, 0, -legH * 0.35, -0.04 * S, { shadow: false, map: false });
+    hair.scale.set(0.55, 2.8, 0.45);
+    rig.tailBaseX = 0.9;
+  } else if (species.tail !== "none") {
     part(tail, geo(new CylinderGeometry(0.02 * S, 0.035 * S, tailLen, 5)), c.body, 0, tailLen * 0.2, -tailLen * 0.3, { rot: [0.8, 0, 0] });
     if (species.tail === "bush" || species.tail === "brush" || species.tail === "feather" || species.tail === "puff" || species.tail === "curl") {
       part(tail, geo(new SphereGeometry(0.08 * S * (1 + age.fluff), 8, 6)), species.tail === "brush" ? c.accent : c.body, 0, tailLen * 0.15, -tailLen * 0.55, { shadow: false });
     }
   }
   pivot.add(tail);
-  if (sh.tailUp) tail.rotation.x = -sh.tailUp;
+  rig.tailBaseX = rig.tailBaseX || (sh.tailUp ? 0.15 : 0.35);
   if (sh.bib) {
     const bib = part(body, geo(new SphereGeometry(bodyH * 0.28, 10, 8)), "#f7f4ee", 0, -bodyH * 0.05, bodyLen * 0.22, { shadow: false });
     bib.scale.set(0.7, 0.9, 0.45);
@@ -639,7 +654,7 @@ function buildBird(pivot, rig, species, age, S) {
     addFluff(body, c.belly, bodyR * 1.05, 0, 1);
   } else {
     const torso = part(body, geo(new SphereGeometry(bodyR * 0.85, 20, 16)), c.body, 0, 0, 0);
-    torso.scale.set(owl ? 1.05 : 0.78, owl ? 0.95 : 0.7, owl ? 1.05 : 1.45);
+    torso.scale.set(owl ? 0.75 : 0.78, owl ? 1.4 : 0.7, owl ? 0.72 : 1.45);
     const breast = part(body, geo(new SphereGeometry(bodyR * (owl ? 0.55 : 0.42), 12, 10)), c.belly, 0, -bodyR * 0.08, bodyR * (owl ? 0.15 : 0.35), { shadow: false });
     breast.scale.set(owl ? 1.05 : 0.8, owl ? 0.9 : 0.7, owl ? 0.7 : 1.1);
   }
@@ -656,11 +671,11 @@ function buildBird(pivot, rig, species, age, S) {
   rig.head = head;
   part(head, geo(new SphereGeometry(headR, 16, 12)), age.wing < 0.4 ? c.accent : c.body, 0, 0, 0);
   if (owl) {
-    const disc = part(head, geo(new SphereGeometry(headR * 0.92, 14, 10)), c.belly, 0, -headR * 0.02, headR * 0.25, { shadow: false });
+    const disc = part(head, geo(new SphereGeometry(headR * 0.92, 14, 10)), "#c4a574", 0, -headR * 0.02, headR * 0.35, { shadow: false, map: false });
     disc.scale.set(1.15, 1.2, 0.35);
   }
   const beakLen = headR * (owl ? 0.28 : age.wing < 0.45 ? 0.35 : 0.9);
-  const beak = part(head, geo(new ConeGeometry(headR * (owl ? 0.12 : 0.22), beakLen, 6)), "#e0a040", 0, -headR * (owl ? 0.18 : 0.05), headR * (owl ? 0.55 : 0.85));
+  const beak = part(head, geo(new ConeGeometry(headR * (owl ? 0.1 : 0.22), beakLen, 6)), owl ? "#2c2926" : "#e0a040", 0, -headR * (owl ? 0.2 : 0.05), headR * (owl ? 0.7 : 0.85));
   beak.rotation.x = Math.PI / 2;
   eyePair(head, headR * (owl ? 0.38 : 0.4), headR * (owl ? 0.08 : 0.1), headR * (owl ? 0.55 : 0.7), headR * (owl ? 0.28 : 0.22) * age.eye, owl ? "#1a120c" : c.dark);
   if (species.ears === "tuft") rig.ears = ears(head, species, age, S, headR);
