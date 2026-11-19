@@ -544,10 +544,11 @@ function buildQuad(pivot, rig, species, age, S) {
 
 function buildBird(pivot, rig, species, age, S) {
   const c = species.colors;
-  const bodyR = 0.28 * S * (age.round > 0.4 ? 1.15 : 0.85);
-  const bodyLen = 0.55 * S * (0.7 + age.wing * 0.5);
+  const owl = species.id === "owl";
+  const bodyR = 0.28 * S * (age.round > 0.4 ? 1.15 : 0.85) * (owl ? 1.18 : 1);
+  const bodyLen = 0.55 * S * (0.7 + age.wing * 0.5) * (owl ? 0.55 : 1);
   const body = new Group();
-  const stand = 0.22 * S * (0.45 + age.leg);
+  const stand = 0.22 * S * (0.45 + age.leg) * (owl ? 0.72 : 1);
   body.position.set(0, stand + bodyR, 0);
   pivot.add(body);
   if (age.wing < 0.4) {
@@ -555,28 +556,32 @@ function buildBird(pivot, rig, species, age, S) {
     addFluff(body, c.belly, bodyR * 1.05, 0, 1);
   } else {
     const torso = part(body, geo(new SphereGeometry(bodyR * 0.85, 20, 16)), c.body, 0, 0, 0);
-    torso.scale.set(0.78, 0.7, 1.45);
-    const breast = part(body, geo(new SphereGeometry(bodyR * 0.42, 12, 10)), c.belly, 0, -bodyR * 0.12, bodyR * 0.35, { shadow: false });
-    breast.scale.set(0.8, 0.7, 1.1);
+    torso.scale.set(owl ? 1.05 : 0.78, owl ? 0.95 : 0.7, owl ? 1.05 : 1.45);
+    const breast = part(body, geo(new SphereGeometry(bodyR * (owl ? 0.55 : 0.42), 12, 10)), c.belly, 0, -bodyR * 0.08, bodyR * (owl ? 0.15 : 0.35), { shadow: false });
+    breast.scale.set(owl ? 1.05 : 0.8, owl ? 0.9 : 0.7, owl ? 0.7 : 1.1);
   }
-  const headR = bodyR * (age.wing < 0.4 ? 0.62 : 0.42) * age.head;
+  const headR = bodyR * (owl ? 0.72 : age.wing < 0.4 ? 0.62 : 0.42) * age.head;
   const neck = new Group();
-  neck.position.set(0, bodyR * 0.35, bodyLen * 0.42);
-  neck.rotation.x = -0.7;
+  neck.position.set(0, bodyR * (owl ? 0.45 : 0.35), bodyLen * (owl ? 0.12 : 0.42));
+  neck.rotation.x = owl ? -0.25 : -0.7;
   body.add(neck);
-  part(neck, geo(new CapsuleGeometry(headR * 0.45, bodyR * 0.35, 4, 8)), age.wing < 0.4 ? c.accent : c.body, 0, bodyR * 0.28, 0);
+  if (!owl) part(neck, geo(new CapsuleGeometry(headR * 0.45, bodyR * 0.35, 4, 8)), age.wing < 0.4 ? c.accent : c.body, 0, bodyR * 0.28, 0);
   const head = new Group();
-  head.position.set(0, bodyR * 0.55, 0);
-  head.rotation.x = 0.45;
+  head.position.set(0, owl ? bodyR * 0.28 : bodyR * 0.55, 0);
+  head.rotation.x = owl ? 0.1 : 0.45;
   neck.add(head);
   rig.head = head;
-  part(head, geo(new SphereGeometry(headR, 10, 8)), age.wing < 0.4 ? c.accent : c.body, 0, 0, 0);
-  const beakLen = headR * (age.wing < 0.45 ? 0.35 : 0.9);
-  const beak = part(head, geo(new ConeGeometry(headR * 0.22, beakLen, 6)), "#e0a040", 0, -headR * 0.05, headR * 0.85);
+  part(head, geo(new SphereGeometry(headR, 16, 12)), age.wing < 0.4 ? c.accent : c.body, 0, 0, 0);
+  if (owl) {
+    const disc = part(head, geo(new SphereGeometry(headR * 0.92, 14, 10)), c.belly, 0, -headR * 0.02, headR * 0.25, { shadow: false });
+    disc.scale.set(1.15, 1.2, 0.35);
+  }
+  const beakLen = headR * (owl ? 0.28 : age.wing < 0.45 ? 0.35 : 0.9);
+  const beak = part(head, geo(new ConeGeometry(headR * (owl ? 0.12 : 0.22), beakLen, 6)), "#e0a040", 0, -headR * (owl ? 0.18 : 0.05), headR * (owl ? 0.55 : 0.85));
   beak.rotation.x = Math.PI / 2;
-  eyePair(head, headR * 0.4, headR * 0.1, headR * 0.7, headR * 0.22 * age.eye, c.dark);
+  eyePair(head, headR * (owl ? 0.38 : 0.4), headR * (owl ? 0.08 : 0.1), headR * (owl ? 0.55 : 0.7), headR * (owl ? 0.28 : 0.22) * age.eye, owl ? "#1a120c" : c.dark);
   if (species.ears === "tuft") rig.ears = ears(head, species, age, S, headR);
-  const wingLen = bodyLen * (0.35 + age.wing * 1.5);
+  const wingLen = bodyLen * (0.35 + age.wing * 1.5) * (owl ? 0.85 : 1);
   const wingW = bodyR * (0.35 + age.wing * 0.8);
   for (const side of [-1, 1]) {
     const wing = new Group();
@@ -593,7 +598,7 @@ function buildBird(pivot, rig, species, age, S) {
   }
   const tail = new Group();
   tail.position.set(0, body.position.y, -bodyLen * 0.7);
-  const feathers = age.wing < 0.4 ? 0.12 * S : 0.28 * S * age.wing;
+  const feathers = (age.wing < 0.4 ? 0.12 * S : 0.28 * S * age.wing) * (owl ? 0.45 : 1);
   part(tail, geo(new SphereGeometry(feathers * 0.55, 10, 8)), c.accent, 0, 0, -feathers * 0.45, { shadow: false, scale: [1.6, 0.12, 1] });
   pivot.add(tail);
   rig.tail = tail;

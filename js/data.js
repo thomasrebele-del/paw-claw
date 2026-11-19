@@ -614,7 +614,7 @@ export const SPECIES = {
     defaultName: "Giant Owl",
     plan: "bird",
     scale: 1.75,
-    length: 0.8,
+    length: 0.62,
     bulk: 0.9,
     diet: ["meat", "seeds"],
     ears: "tuft",
