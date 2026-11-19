@@ -39,6 +39,7 @@ import {
 } from "./data.js";
 import { blip, chime, creatureCall, eatSound, setMuted, tone } from "./audio.js";
 import { buildCreature, buildPerson } from "./meshes.js";
+import { preloadAnimals } from "./models.js";
 import {
   CAMP,
   ISLAND,
@@ -180,7 +181,7 @@ export class Game {
     this.stats.bosses = this.stats.bosses || [];
     this.wilds = SPAWNS.filter((s) => !this.removedWild.includes(s.id)).map((s) => {
       const sp = SPECIES[s.species];
-      const maxHp = Math.round(28 + sp.base.hp * 0.55);
+      const maxHp = Math.round(16 + sp.base.hp * 0.22);
       return {
         ...s,
         yaw: 0,
@@ -266,6 +267,23 @@ export class Game {
     this.ui?.refresh();
     this.lastFrame = performance.now();
     requestAnimationFrame((t) => this.frame(t));
+    preloadAnimals().then(() => this.swapToModels()).catch(() => this.toast("The animal models did not load."));
+  }
+
+  swapToModels() {
+    const riding = this.mounted ? this.mountUid : null;
+    if (riding) this.scene.attach(this.person.group);
+    for (const view of this.views.values()) {
+      this.scene.remove(view.anim.group);
+      view.anim.dispose();
+    }
+    this.views.clear();
+    for (const view of this.wildViews.values()) {
+      this.scene.remove(view.group);
+      view.dispose();
+    }
+    this.wildViews.clear();
+    if (riding) this.mounted = false;
   }
 
   resize() {
@@ -518,7 +536,7 @@ export class Game {
 
   hurtPlayer(wild) {
     if (inSafeZone(this.player.x, this.player.z)) return;
-    let dmg = wild.boss ? (wild.hp < wild.maxHp * 0.35 ? 34 : 24) : 9;
+    let dmg = wild.boss ? (wild.hp < wild.maxHp * 0.35 ? 12 : 8) : 5;
     const guard = this.pets.find((pet) => !(this.mounted && this.mountUid === pet.uid) && Math.hypot(pet.x - this.player.x, pet.z - this.player.z) < 3.4);
     if (guard) {
       dmg = Math.max(1, Math.round(dmg * 0.4));
@@ -575,7 +593,7 @@ export class Game {
     if (pet.stage === "baby") dmg = Math.max(1, Math.round(dmg * 0.4));
     else if (pet.stage === "juvenile") dmg = Math.round(dmg * 0.7);
     else if (pet.stage === "alpha") dmg = Math.round(dmg * 1.55);
-    if (best.boss) dmg = Math.max(1, Math.round(dmg * 0.42));
+    if (best.boss) dmg = Math.max(2, Math.round(dmg * 0.9));
     best.hp -= dmg;
     best.flash = 0.18;
     this.attackFx(pet, best);

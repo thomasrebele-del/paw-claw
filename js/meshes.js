@@ -18,6 +18,7 @@ import {
   Vector2,
 } from "../vendor/three.module.js";
 import { SPECIES, nextStage } from "./data.js";
+import { takeModel } from "./models.js";
 
 const AGE = {
   baby: {
@@ -395,6 +396,8 @@ function addAlphaMarks(pivot, species, S) {
 }
 
 export function buildCreature(speciesId, stage, growth01 = 0, accessories = []) {
+  const modeled = takeModel(speciesId);
+  if (modeled) return modeled;
   const species = SPECIES[speciesId];
   buildStage = stage;
   eyeColor = species.colors.eye || species.colors.dark || "#5a3a22";

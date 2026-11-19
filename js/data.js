@@ -697,9 +697,9 @@ for (const key of Object.keys(SPECIES)) {
 }
 
 export const BOSSES = [
-  { id: "boss-thorn", species: "wolf", name: "Thorn, the Briar Alpha", x: -28, z: -42, hp: 860, scale: 2.35 },
-  { id: "boss-maw", species: "bear", name: "Maw of Greyhorn", x: 6, z: -90, hp: 1180, scale: 2.7 },
-  { id: "boss-tyrant", species: "eagle", name: "Sky Tyrant", x: 18, z: 72, hp: 740, scale: 2.45 },
+  { id: "boss-thorn", species: "wolf", name: "Thorn, the Briar Alpha", x: -28, z: -42, hp: 160, scale: 1.8 },
+  { id: "boss-maw", species: "bear", name: "Maw of Greyhorn", x: 6, z: -90, hp: 200, scale: 2 },
+  { id: "boss-tyrant", species: "eagle", name: "Sky Tyrant", x: 18, z: 72, hp: 140, scale: 1.8 },
 ];
 
 export const SPAWNS = [
@@ -832,7 +832,7 @@ export function mountProfile(pet) {
 }
 
 export function passivePerSecond(isActive) {
-  return isActive ? 100 / 280 : 100 / 680;
+  return isActive ? 100 / 140 : 100 / 340;
 }
 
 export function timeUntilNext(pet, isActive) {
