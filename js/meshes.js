@@ -396,7 +396,7 @@ function addAlphaMarks(pivot, species, S) {
 }
 
 export function buildCreature(speciesId, stage, growth01 = 0, accessories = []) {
-  const modeled = takeModel(speciesId);
+  const modeled = takeModel(speciesId, stage);
   if (modeled) return modeled;
   const species = SPECIES[speciesId];
   buildStage = stage;
