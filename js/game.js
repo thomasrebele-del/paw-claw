@@ -53,6 +53,7 @@ import {
   islandY,
   regionAt,
 } from "./world.js";
+import { followPoint, inSafeZone, tameFood } from "./rules.js";
 
 const SAVE_KEY = "pawclaw-greenwood-v1";
 const HIP = 0.52;
@@ -119,6 +120,7 @@ export class Game {
     this.stats = data.stats;
     this.missionsDone = data.missionsDone || {};
     this.welcomed = !!data.welcomed;
+    this.tutorialStep = data.tutorialDone ? 99 : (data.tutorialStep || 0);
     this.muted = !!data.muted;
     setMuted(this.muted);
     this.pendingAway = 0;
@@ -162,6 +164,7 @@ export class Game {
     this.scene.background = new Color("#8fbfdc");
     if (this.scene.fog) this.scene.fog.color.set("#b7cfc0");
 
+    this.stick = { x: 0, z: 0 };
     this.person = buildPerson();
     this.scene.add(this.person.group);
     this.player = { x: 0, y: heightAt(0, 20), z: 20, yaw: Math.PI, moving: false, vy: 0, hp: 120, maxHp: 120, hit: 0 };
@@ -436,7 +439,7 @@ export class Game {
       let speed = 1.2;
       if (wild.down || wild.submitted) {
         speed = 0;
-      } else if (wild.boss || wild.temperament === "fight") {
+      } else if ((wild.boss || wild.temperament === "fight") && !inSafeZone(this.player.x, this.player.z) && !inSafeZone(wild.x, wild.z)) {
         const range = wild.boss ? 26 : 14;
         if (pd < range) {
           threat = true;
@@ -454,6 +457,8 @@ export class Game {
           wild.tx = wild.homeX + Math.cos(a) * (wild.boss ? 3 : 4);
           wild.tz = wild.homeZ + Math.sin(a) * (wild.boss ? 3 : 4);
         }
+      } else if (wild.boss || wild.temperament === "fight") {
+        speed = 0;
       } else if (pd < 11) {
         wild.tx = wild.x - (pdx / pd) * 9;
         wild.tz = wild.z - (pdz / pd) * 9;
@@ -512,6 +517,7 @@ export class Game {
   }
 
   hurtPlayer(wild) {
+    if (inSafeZone(this.player.x, this.player.z)) return;
     let dmg = wild.boss ? (wild.hp < wild.maxHp * 0.35 ? 34 : 24) : 9;
     const guard = this.pets.find((pet) => !(this.mounted && this.mountUid === pet.uid) && Math.hypot(pet.x - this.player.x, pet.z - this.player.z) < 3.4);
     if (guard) {
@@ -593,7 +599,8 @@ export class Game {
       }
       this.ui?.banner(`${wild.name} falls.`);
     } else {
-      this.toast(`${SPECIES[wild.species].name} yields. Press E to befriend them.`);
+      this.toast(`${SPECIES[wild.species].name} is knocked out. Feed them to tame.`);
+      wild.ko = true;
     }
     this.saveSoon();
   }
@@ -605,10 +612,10 @@ export class Game {
     const fz = -Math.cos(this.camYaw);
     const rx = Math.cos(this.camYaw);
     const rz = -Math.sin(this.camYaw);
-    if (this.keys.KeyW) { ix += fx; iz += fz; }
-    if (this.keys.KeyS) { ix -= fx; iz -= fz; }
-    if (this.keys.KeyA) { ix -= rx; iz -= rz; }
-    if (this.keys.KeyD) { ix += rx; iz += rz; }
+    if (this.keys.KeyW || this.stick.z < 0) { ix += fx; iz += fz; }
+    if (this.keys.KeyS || this.stick.z > 0) { ix -= fx; iz -= fz; }
+    if (this.keys.KeyA || this.stick.x < 0) { ix -= rx; iz -= rz; }
+    if (this.keys.KeyD || this.stick.x > 0) { ix += rx; iz += rz; }
     const moving = ix !== 0 || iz !== 0;
     const len = Math.hypot(ix, iz) || 1;
     ix /= len;
@@ -875,9 +882,10 @@ export class Game {
         let tx;
         let tz;
         let stop;
-        const foe = this.nearestFoe(this.player.x, this.player.z, 11);
+        const foe = inSafeZone(this.player.x, this.player.z) ? null : this.nearestFoe(this.player.x, this.player.z, 11);
         pet.guardCd = Math.max(0, (pet.guardCd || 0) - dt);
-        if (foe && Math.hypot(pet.x - this.player.x, pet.z - this.player.z) < 18) {
+        const slot = followPoint(this.player, this.pets.indexOf(pet), this.pets.length);
+        if (foe) {
           tx = foe.x;
           tz = foe.z;
           stop = 1.15;
@@ -886,25 +894,10 @@ export class Game {
             this.strikeNear(pet);
             pet.guardCd = 1.35;
           }
-        } else if (active) {
-          const dest = this.petDestination(pet, dt);
-          tx = dest.x;
-          tz = dest.z;
-          stop = this.followDist(pet);
         } else {
-          const slot = this.campSlot(pet);
-          const buddy = this.campBuddy(pet);
-          pet.socialT = (pet.socialT ?? 2) - dt;
-          if (buddy && pet.socialT > 0 && Math.hypot(buddy.x - slot.x, buddy.z - slot.z) < 6) {
-            tx = buddy.x;
-            tz = buddy.z;
-            stop = 1;
-          } else {
-            if (pet.socialT < -2) pet.socialT = 2 + Math.random() * 3;
-            tx = slot.x;
-            tz = slot.z;
-            stop = 0.4;
-          }
+          tx = slot.x;
+          tz = slot.z;
+          stop = 0.7;
         }
         const dx = tx - pet.x;
         const dz = tz - pet.z;
@@ -1243,7 +1236,7 @@ export class Game {
       this.toast("Nothing close enough.");
       return;
     }
-    if (near.kind === "wild") this.befriend(near.wild);
+    if (near.kind === "wild") this.tameWild(near.wild);
     else if (near.kind === "forage") this.collect(near.node);
     else if (near.kind === "shop") this.ui?.toggle("shop");
     else if (near.kind === "mount") this.toggleMount();
@@ -1253,7 +1246,12 @@ export class Game {
     const options = [];
     for (const wild of this.wilds) {
       const d = Math.hypot(wild.x - this.player.x, wild.z - this.player.z);
-      if (d < 2.5) options.push({ d, kind: "wild", wild, label: `E  Befriend ${SPECIES[wild.species].name}` });
+      if (d < 2.5) {
+        const ko = wild.ko;
+        const flee = wild.temperament !== "fight";
+        const label = ko ? `E  Feed ${SPECIES[wild.species].name}` : flee ? `E  Befriend ${SPECIES[wild.species].name}` : `${SPECIES[wild.species].name} is hostile`;
+        options.push({ d, kind: "wild", wild, label });
+      }
     }
     for (const node of this.world.forage) {
       if (!node.mesh.visible) continue;
@@ -1291,7 +1289,44 @@ export class Game {
     const near = this.nearestInteract();
     if (near) return near.label;
     const ability = currentAbility(this.activePet());
-    return ability ? `F  ${ability.name}` : "WASD explore";
+    return ability ? `F  ${ability.name}` : "Move, or use the stick";
+  }
+
+  tutorialSteps() {
+    return [
+      ["Move", "WASD, or drag the stick at the bottom left. The camp is a safe circle. Nothing can hurt you there."],
+      ["Your animals", "Every animal you tame follows you. They run at fighters and block part of the hit."],
+      ["Knock out, then feed", "Hostile animals will not join you while they are awake. Let your animals knock them out, walk up, press Act, and feed them the food they like."],
+      ["Your goal", "The line under the prompt is the current goal. Open Missions to see the rest."],
+    ];
+  }
+
+  nextTutorial() {
+    this.tutorialStep += 1;
+    if (this.tutorialStep >= this.tutorialSteps().length) this.tutorialStep = 99;
+    this.saveSoon();
+  }
+
+  tameWild(wild) {
+    const sp = SPECIES[wild.species];
+    if (wild.boss) {
+      this.toast(`${wild.name} will not travel with you.`);
+      return;
+    }
+    if (wild.temperament === "fight" && !wild.ko) {
+      this.toast("Knock them out first. Your animals will do it.");
+      return;
+    }
+    if (wild.ko) {
+      const food = tameFood(sp.diet, this.foods);
+      if (!food) {
+        this.toast(`You need ${sp.diet.join(" or ")} to tame them.`);
+        return;
+      }
+      this.foods[food] -= 1;
+      this.toast(`You offer ${food}.`);
+    }
+    this.befriend(wild);
   }
 
   befriend(wild) {
@@ -1300,8 +1335,8 @@ export class Game {
       this.toast(`${wild.name} will not travel with you.`);
       return;
     }
-    if (wild.temperament === "fight" && !wild.submitted) {
-      this.toast("They're fighting. Press F with your companion.");
+    if (wild.temperament === "fight" && !wild.ko && !wild.submitted) {
+      this.toast("They're fighting. Let your animals knock them out.");
       return;
     }
     if (this.pets.some((p) => p.species === wild.species)) {
@@ -1644,6 +1679,7 @@ export class Game {
       v: 1,
       lastSeen: Date.now(),
       welcomed: this.welcomed,
+      tutorialStep: this.tutorialStep,
       muted: this.muted,
       coins: this.coins,
       day: this.day,

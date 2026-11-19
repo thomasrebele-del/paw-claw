@@ -85,7 +85,22 @@ export function createUI(game) {
       <p data-f="ability"></p>
       <button class="mount-btn" data-f="mount" type="button">Mount</button>
     </section>
-    <div class="card prompt" data-f="prompt">WASD explore</div>
+    <div class="card prompt" data-f="prompt">Move to explore</div>
+    <p class="card goal" data-f="goal">Goal: make a friend</p>
+    <section class="tutorial card" data-f="tutorial">
+      <p class="kicker">How to play</p>
+      <h2 data-f="tut-title">Move</h2>
+      <p data-f="tut-body">Use WASD or the stick.</p>
+      <button type="button" data-act="tut-next">Next</button>
+    </section>
+    <div class="touch">
+      <div class="stick" data-f="stick"><span></span></div>
+      <div class="touch-actions">
+        <button type="button" data-act="touch-act">Act</button>
+        <button type="button" data-act="touch-fight">Fight</button>
+        <button type="button" data-act="touch-mount">Ride</button>
+      </div>
+    </div>
     <nav class="card dock">
       <button type="button" data-act="companions">Companions<kbd>V</kbd></button>
       <button type="button" data-act="growth">Growth<kbd>G</kbd></button>
@@ -336,6 +351,15 @@ export function createUI(game) {
       q("clock").textContent = game.clockLabel();
       q("region").textContent = regionName(game.player.x, game.player.z);
       q("coins").textContent = String(game.coins);
+      const mission = game.currentMission();
+      q("goal").textContent = mission ? `Goal: ${mission.title}` : "Goal: the written trails are finished";
+      const steps = game.tutorialSteps();
+      const tut = q("tutorial");
+      if (game.tutorialStep < steps.length) {
+        tut.hidden = false;
+        q("tut-title").textContent = steps[game.tutorialStep][0];
+        q("tut-body").textContent = steps[game.tutorialStep][1];
+      } else tut.hidden = true;
       const hpPct = Math.max(0, game.player.hp / game.player.maxHp);
       q("hp").style.width = `${Math.round(hpPct * 100)}%`;
       q("hp-label").textContent = `${Math.ceil(game.player.hp)} / ${game.player.maxHp}`;
@@ -347,7 +371,6 @@ export function createUI(game) {
         q("boss-name").textContent = boss.name;
         q("boss-hp").style.width = `${Math.max(0, Math.round((boss.hp / boss.maxHp) * 100))}%`;
       } else bossWrap.hidden = true;
-      const mission = game.currentMission();
       const snap = { pets: game.pets, stats: game.stats };
       if (mission) {
         q("mission-title").textContent = mission.title;
@@ -458,6 +481,10 @@ export function createUI(game) {
       game.setActive(ui.growthPet().uid);
       game.toggleMount();
     } else if (act === "mute") game.toggleMute();
+    else if (act === "tut-next") game.nextTutorial();
+    else if (act === "touch-act") game.interact();
+    else if (act === "touch-fight") game.useAbility();
+    else if (act === "touch-mount") game.toggleMount();
     else if (act === "reset") {
       if (confirm("Reset this adventure? Companions and growth will be cleared.")) game.reset();
     } else if (button === q("mount")) game.toggleMount();
@@ -474,6 +501,22 @@ export function createUI(game) {
     event.stopPropagation();
     game.toggleMount();
   });
+  const stick = q("stick");
+  const setStick = (clientX, clientY) => {
+    const r = stick.getBoundingClientRect();
+    game.stick.x = Math.max(-1, Math.min(1, (clientX - (r.left + r.width / 2)) / (r.width / 2)));
+    game.stick.z = Math.max(-1, Math.min(1, (clientY - (r.top + r.height / 2)) / (r.height / 2)));
+  };
+  stick.addEventListener("pointerdown", (event) => {
+    stick.setPointerCapture(event.pointerId);
+    setStick(event.clientX, event.clientY);
+  });
+  stick.addEventListener("pointermove", (event) => {
+    if (event.buttons) setStick(event.clientX, event.clientY);
+  });
+  const clearStick = () => { game.stick.x = 0; game.stick.z = 0; };
+  stick.addEventListener("pointerup", clearStick);
+  stick.addEventListener("pointercancel", clearStick);
 
   ui.growthUid = game.activeUid;
   return ui;
