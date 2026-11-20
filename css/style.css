@@ -115,7 +115,8 @@ h1, h2, h3 { font-family: Fraunces, serif; font-weight: 560; margin: 0; }
   top: 50%; left: 50%; transform: translate(-50%, -50%);
   width: min(420px, calc(100% - 32px)); padding: 16px; z-index: 5; pointer-events: auto;
 }
-.tutorial button { margin-top: 10px; }
+.tutorial .tut-actions { display: flex; gap: 8px; margin-top: 10px; }
+.tutorial button { margin-top: 0; }
 .touch { position: absolute; left: 16px; right: 16px; bottom: 16px; display: flex; justify-content: space-between; pointer-events: none; }
 .stick {
   width: 108px; height: 108px; border-radius: 50%;

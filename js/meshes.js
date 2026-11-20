@@ -216,20 +216,21 @@ function ears(parent, species, age, S, headR) {
   for (const side of [-1, 1]) {
     const g = new Group();
     g.position.set(side * headR * 0.72, headR * 0.75, 0);
+    const earColor = species.id === "panda" ? species.colors.dark : species.colors.body;
     if (species.ears === "point" || species.ears === "tuft") {
-      part(g, geo(new ConeGeometry(headR * 0.28, h, 8)), species.colors.body, 0, h * 0.35, 0);
+      part(g, geo(new ConeGeometry(headR * 0.28, h, 8)), earColor, 0, h * 0.35, 0);
       part(g, geo(new ConeGeometry(headR * 0.14, h * 0.7, 6)), species.colors.belly, 0, h * 0.28, headR * 0.08, { shadow: false });
     } else if (species.ears === "floppy") {
-      const flap = part(g, geo(new SphereGeometry(headR * 0.38, 8, 6)), species.colors.body, 0, -h * 0.15, 0);
+      const flap = part(g, geo(new SphereGeometry(headR * 0.38, 8, 6)), earColor, 0, -h * 0.15, 0);
       flap.scale.set(0.55, 1.3, 0.35);
     } else if (species.ears === "long") {
-      const ear = part(g, geo(new SphereGeometry(headR * 0.28, 8, 6)), species.colors.body, 0, h * 0.8, 0);
+      const ear = part(g, geo(new SphereGeometry(headR * 0.28, 8, 6)), earColor, 0, h * 0.8, 0);
       ear.scale.set(0.45, 2.4, 0.35);
     } else if (species.ears === "fan") {
       const fan = part(g, geo(new CircleGeometry(headR * 0.95 * age.ear, 10)), species.colors.accent, side * headR * 0.2, 0, 0);
       fan.rotation.y = side * 0.6;
     } else if (species.ears === "round" || species.ears === "small" || species.ears === "side") {
-      part(g, geo(new SphereGeometry(headR * (species.ears === "small" ? 0.22 : 0.34), 8, 6)), species.colors.body, 0, h * 0.2, 0);
+      part(g, geo(new SphereGeometry(headR * (species.ears === "small" ? 0.22 : 0.34), 8, 6)), earColor, 0, h * 0.2, 0);
     }
     parent.add(g);
     nodes.push(g);
@@ -352,6 +353,9 @@ function addSpeciesDetail(pivot, species, S) {
     mark(new TorusGeometry(0.07 * S, 0.012 * S, 6, 12), "#f4e7a8", 0.07 * S, y * 0.95, 0.22 * S);
     mark(new TorusGeometry(0.07 * S, 0.012 * S, 6, 12), "#f4e7a8", -0.07 * S, y * 0.95, 0.22 * S);
     mark(new ConeGeometry(0.025 * S, 0.1 * S, 4), "#e0a040", 0, y * 0.72, 0.32 * S);
+  } else if (id === "panda") {
+    for (const side of [-1, 1]) mark(new SphereGeometry(0.07 * S, 8, 6), c.dark, side * 0.1 * S, y * 0.85, 0.22 * S);
+    mark(new SphereGeometry(0.08 * S, 8, 6), c.dark, 0, y * 0.35, 0.28 * S);
   } else if (id === "aurora") {
     mark(new TorusGeometry(0.18 * S, 0.012 * S, 6, 16), "#7ee0ff", 0, y * 0.8, 0, { rot: [Math.PI / 2, 0, 0] });
     mark(new SphereGeometry(0.05 * S, 8, 6), "#d7fff4", 0, y * 1.2, 0.1 * S);
@@ -485,6 +489,8 @@ const SHAPE = {
   tiger: { leg: 1.02, len: 1.3, chest: 1.02, snout: 0.85, neck: 0.8, ear: 0.65, tail: 1.15 },
   camel: { leg: 1.28, len: 1.18, chest: 0.82, head: 0.66, snout: 1.05, neck: 1.85, ear: 0.5 },
   goat: { leg: 0.82, len: 0.88, chest: 0.88, head: 0.78, snout: 0.65, neck: 0.85 },
+  capybara: { leg: 0.48, len: 1.2, chest: 1.45, head: 0.85, snout: 0.55, neck: 0.3, ear: 0.55 },
+  panda: { leg: 0.55, len: 1.05, chest: 1.5, head: 1.15, snout: 0.4, neck: 0.28, ear: 0.85 },
 };
 
 function buildQuad(pivot, rig, species, age, S) {
@@ -663,7 +669,8 @@ function buildBird(pivot, rig, species, age, S) {
     disc.scale.set(1.15, 1.2, 0.35);
   }
   const beakLen = headR * (owl ? 0.28 : age.wing < 0.45 ? 0.35 : 0.9);
-  const beak = part(head, geo(new ConeGeometry(headR * (owl ? 0.1 : 0.22), beakLen, 6)), owl ? "#2c2926" : "#e0a040", 0, -headR * (owl ? 0.2 : 0.05), headR * (owl ? 0.7 : 0.85));
+  const beakColor = owl ? "#2c2926" : species.id === "penguin" ? "#e07a2a" : "#e0a040";
+  const beak = part(head, geo(new ConeGeometry(headR * (owl ? 0.1 : 0.22), beakLen, 6)), beakColor, 0, -headR * (owl ? 0.2 : 0.05), headR * (owl ? 0.7 : 0.85));
   beak.rotation.x = Math.PI / 2;
   eyePair(head, headR * (owl ? 0.38 : 0.4), headR * (owl ? 0.08 : 0.1), headR * (owl ? 0.55 : 0.7), headR * (owl ? 0.28 : 0.22) * age.eye, owl ? "#1a120c" : c.dark);
   if (species.ears === "tuft") rig.ears = ears(head, species, age, S, headR);

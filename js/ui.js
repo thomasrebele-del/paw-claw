@@ -92,7 +92,10 @@ export function createUI(game) {
       <p class="kicker">How to play</p>
       <h2 data-f="tut-title">Move</h2>
       <p data-f="tut-body">Use WASD or the stick.</p>
-      <button type="button" data-act="tut-next">Next</button>
+      <div class="tut-actions">
+        <button type="button" data-act="tut-next">Next</button>
+        <button type="button" data-act="tut-skip">Skip</button>
+      </div>
     </section>
     <div class="touch">
       <div class="stick" data-f="stick"><span></span></div>
@@ -109,6 +112,7 @@ export function createUI(game) {
       <button type="button" data-act="inventory">Inventory<kbd>I</kbd></button>
       <button type="button" data-act="journal">Journal<kbd>J</kbd></button>
       <button type="button" data-act="map">Map<kbd>P</kbd></button>
+      <button type="button" data-act="tutorial">Tutorial</button>
     </nav>
     <div class="toasts" data-f="toasts"></div>
     <div class="banner card" data-f="banner"></div>
@@ -484,6 +488,11 @@ export function createUI(game) {
       game.toggleMount();
     } else if (act === "mute") game.toggleMute();
     else if (act === "tut-next") game.nextTutorial();
+    else if (act === "tut-skip") game.skipTutorial();
+    else if (act === "tutorial") {
+      ui.close();
+      game.startTutorial();
+    }
     else if (act === "touch-act") game.interact();
     else if (act === "touch-fight") game.useAbility();
     else if (act === "touch-mount") game.toggleMount();

@@ -98,6 +98,9 @@ const ATTACKS = {
   eagle: { name: "Talon Dive", color: "#f2c14e", kind: "slash" },
   owl: { name: "Silent Stoop", color: "#c9b27a", kind: "spark" },
   aurora: { name: "Prism Beam", color: "#7ee0ff", kind: "cone" },
+  penguin: { name: "Flipper Slap", color: "#f4f1ea", kind: "slash" },
+  capybara: { name: "River Sit", color: "#c4a27a", kind: "ring" },
+  panda: { name: "Bamboo Swat", color: "#1a1a1a", kind: "cone" },
 };
 
 function clamp(v, a, b) {
@@ -130,7 +133,7 @@ export class Game {
     this.stats = data.stats;
     this.missionsDone = data.missionsDone || {};
     this.welcomed = !!data.welcomed;
-    this.tutorialStep = data.tutorialDone ? 99 : (data.tutorialStep || 0);
+    this.tutorialStep = data.tutorialOn ? (data.tutorialStep || 0) : 99;
     this.muted = !!data.muted;
     setMuted(this.muted);
     this.pendingAway = 0;
@@ -1352,6 +1355,17 @@ export class Game {
     this.saveSoon();
   }
 
+  skipTutorial() {
+    this.tutorialStep = 99;
+    this.saveSoon();
+  }
+
+  startTutorial() {
+    this.tutorialStep = 0;
+    this.panelOpen = false;
+    this.saveSoon();
+  }
+
   tameWild(wild) {
     const sp = SPECIES[wild.species];
     if (wild.boss) {
@@ -1726,6 +1740,7 @@ export class Game {
       v: 1,
       lastSeen: Date.now(),
       welcomed: this.welcomed,
+      tutorialOn: this.tutorialStep < 99,
       tutorialStep: this.tutorialStep,
       muted: this.muted,
       coins: this.coins,
