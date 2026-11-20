@@ -118,6 +118,13 @@ export class Game {
     this.forageGone = data.forageGone || {};
     this.activeUid = data.activeUid || "maple";
     this.pets = data.pets || base.pets;
+    this.pets.forEach((pet, index) => {
+      if (!Number.isFinite(pet.x) || !Number.isFinite(pet.z)) {
+        const slot = followPoint({ x: 0, z: 20, yaw: Math.PI }, index, this.pets.length);
+        pet.x = slot.x;
+        pet.z = slot.z;
+      }
+    });
     this.stats = data.stats;
     this.missionsDone = data.missionsDone || {};
     this.welcomed = !!data.welcomed;
@@ -574,14 +581,14 @@ export class Game {
     return best;
   }
 
-  strikeNear(pet) {
+  strikeNear(pet, guarding = false) {
     let best = null;
-    let bestD = 3.2;
+    let bestD = guarding ? 4.2 : 3.2;
     for (const wild of this.wilds) {
       if (wild.down || wild.submitted) continue;
       if (wild.temperament !== "fight" && !wild.boss) continue;
       const d = Math.hypot((pet.x ?? this.player.x) - wild.x, (pet.z ?? this.player.z) - wild.z);
-      const reach = wild.boss ? 4.2 : 2.8;
+      const reach = wild.boss ? 4.6 : (guarding ? 3.6 : 2.8);
       if (d < reach && d < bestD) {
         best = wild;
         bestD = d;
@@ -590,9 +597,10 @@ export class Game {
     if (!best) return false;
     const stats = petStats(pet);
     let dmg = Math.max(1, stats.atk);
-    if (pet.stage === "baby") dmg = Math.max(1, Math.round(dmg * 0.4));
-    else if (pet.stage === "juvenile") dmg = Math.round(dmg * 0.7);
+    if (!guarding && pet.stage === "baby") dmg = Math.max(1, Math.round(dmg * 0.4));
+    else if (!guarding && pet.stage === "juvenile") dmg = Math.round(dmg * 0.7);
     else if (pet.stage === "alpha") dmg = Math.round(dmg * 1.55);
+    if (guarding) dmg = Math.max(5, dmg);
     if (best.boss) dmg = Math.max(2, Math.round(dmg * 0.9));
     best.hp -= dmg;
     best.flash = 0.18;
@@ -900,27 +908,31 @@ export class Game {
         let tx;
         let tz;
         let stop;
-        const foe = inSafeZone(this.player.x, this.player.z) ? null : this.nearestFoe(this.player.x, this.player.z, 11);
+        const foe = inSafeZone(this.player.x, this.player.z) ? null : this.nearestFoe(this.player.x, this.player.z, 18);
         pet.guardCd = Math.max(0, (pet.guardCd || 0) - dt);
         const slot = followPoint(this.player, this.pets.indexOf(pet), this.pets.length);
+        if (!Number.isFinite(pet.x) || !Number.isFinite(pet.z)) {
+          pet.x = slot.x;
+          pet.z = slot.z;
+        }
         if (foe) {
           tx = foe.x;
           tz = foe.z;
-          stop = 1.15;
-          if (Math.hypot(pet.x - foe.x, pet.z - foe.z) < 2.5 && pet.guardCd <= 0) {
+          stop = 1.05;
+          if (Math.hypot(pet.x - foe.x, pet.z - foe.z) < 3.6 && pet.guardCd <= 0) {
             pet.yaw = Math.atan2(foe.x - pet.x, foe.z - pet.z);
-            this.strikeNear(pet);
-            pet.guardCd = 1.35;
+            this.strikeNear(pet, true);
+            pet.guardCd = 1.15;
           }
         } else {
           tx = slot.x;
           tz = slot.z;
-          stop = 0.7;
+          stop = 0.65;
         }
         const dx = tx - pet.x;
         const dz = tz - pet.z;
         const dist = Math.hypot(dx, dz);
-        const speed = petStats(pet).speed * (active ? 1.2 : 0.9);
+        const speed = Math.max(8, petStats(pet).speed);
         if (dist > stop) {
           const step = Math.min(dist - stop, speed * dt);
           pet.x += (dx / dist) * step;
@@ -1368,6 +1380,8 @@ export class Game {
       species: sp.id,
       name,
       stage: "baby",
+      x: wild.x,
+      z: wild.z,
       growth: 0,
       xp: 0,
       level: 1,
