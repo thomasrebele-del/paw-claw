@@ -15,6 +15,7 @@ import {
   currentAbility,
   formatDuration,
   growthNeeds,
+  growthTarget,
   lockedAbilities,
   mountProfile,
   petStats,
@@ -198,8 +199,8 @@ export function createUI(game) {
             <strong>${esc(pet.name)}</strong>
             <span class="stage ${pet.stage}">${stageLabel(pet.stage)}</span>
           </div>
-          <p>${esc(sp.name)} · Lv ${pet.level} · ${Math.floor(pet.growth)}% growth</p>
-          <div class="bar"><span style="width:${Math.min(100, pet.growth)}%"></span></div>
+          <p>${esc(sp.name)} · Lv ${pet.level} · ${Math.floor((pet.growth / growthTarget(pet)) * 100)}% growth</p>
+          <div class="bar"><span style="width:${Math.min(100, (pet.growth / growthTarget(pet)) * 100)}%"></span></div>
           <p>Rideable: ${prof.rideable ? "Yes" : "No"}${prof.rideable ? ` · ${esc(prof.reason)}` : ""}</p>
           <div class="row">
             <button class="text-btn ghost" data-act="follow" data-uid="${pet.uid}" type="button">${active ? "Following" : "Follow"}</button>
@@ -240,8 +241,8 @@ export function createUI(game) {
             <span class="stage ${pet.stage}">${stageLabel(pet.stage)}</span>
           </div>
           <p>${esc(sp.name)} · Lv ${pet.level} · bond ${Math.floor(pet.bond)}</p>
-          <div class="bar"><span style="width:${Math.min(100, pet.growth)}%"></span></div>
-          <p>Growth ${Math.floor(pet.growth)}%${next ? ` · next ${stageLabel(next)}` : " · fully grown"}</p>
+          <div class="bar"><span style="width:${Math.min(100, (pet.growth / growthTarget(pet)) * 100)}%"></span></div>
+          <p>Growth ${Math.floor((pet.growth / growthTarget(pet)) * 100)}%${next ? ` · next ${stageLabel(next)}` : " · fully grown"}</p>
           <p>${eta == null ? "No further stage." : `About ${formatDuration(eta)} of companionship, sooner with food and missions.`}</p>
           <p>Size ${esc(sizeText(pet))}</p>
           <div class="stats">
@@ -392,8 +393,9 @@ export function createUI(game) {
         q("stage").textContent = stageLabel(pet.stage);
         q("stage").className = `stage ${pet.stage}`;
         q("pet-meta").textContent = `${sp.name} · Lv ${pet.level}`;
-        q("growth").style.width = `${Math.min(100, pet.growth)}%`;
-        q("growth-label").textContent = `Growth ${Math.floor(pet.growth)}% · ${Math.floor(pet.xp)}/${xpNeed(pet.level)} xp`;
+        const growthPct = Math.min(100, (pet.growth / growthTarget(pet)) * 100);
+        q("growth").style.width = `${growthPct}%`;
+        q("growth-label").textContent = `Growth ${Math.floor(growthPct)}% · ${Math.floor(pet.xp)}/${xpNeed(pet.level)} xp`;
         q("ability").textContent = ability ? `F  ${ability.name}` : "";
         const mountBtn = q("mount");
         if (game.mounted) {

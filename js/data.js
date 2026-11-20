@@ -743,6 +743,13 @@ export function nextStage(species, stage) {
   return list[i + 1];
 }
 
+export function growthTarget(pet) {
+  const sp = SPECIES[pet.species];
+  const nxt = nextStage(sp, pet.stage);
+  if (nxt === "alpha") return 100000;
+  return 100;
+}
+
 export function foodName(id) {
   return FOODS.find((f) => f.id === id)?.name || id;
 }
@@ -755,7 +762,7 @@ export function petStats(pet) {
   const sp = SPECIES[pet.species];
   const last = stageIndex(sp.stages[sp.stages.length - 1]);
   const t = stageIndex(pet.stage) / Math.max(1, last);
-  const growth = 0.94 + (pet.growth / 100) * 0.08;
+  const growth = 0.94 + Math.min(1, pet.growth / growthTarget(pet)) * 0.08;
   const lv = 1 + (pet.level - 1) * 0.06;
   const stageMul = 0.62 + t * 0.52;
   return {
@@ -838,7 +845,7 @@ export function passivePerSecond(isActive) {
 export function timeUntilNext(pet, isActive) {
   const sp = SPECIES[pet.species];
   if (!nextStage(sp, pet.stage)) return null;
-  const remain = Math.max(0, 100 - pet.growth);
+  const remain = Math.max(0, growthTarget(pet) - pet.growth);
   return remain / passivePerSecond(isActive);
 }
 
@@ -932,7 +939,7 @@ export const MISSIONS = [
       const e = findPet(s, "eagle");
       if (!e) return 0;
       const stagePart = stageIndex(e.stage) / stageIndex("adult");
-      return Math.min(1, stagePart * 0.6 + (s.stats.reachedPerch ? 0.4 : e.growth / 100 * 0.15));
+      return Math.min(1, stagePart * 0.6 + (s.stats.reachedPerch ? 0.4 : Math.min(1, e.growth / growthTarget(e)) * 0.15));
     },
     done: (s) => s.stats.reachedPerch,
   },

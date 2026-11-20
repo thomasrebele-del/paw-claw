@@ -32,6 +32,7 @@ import {
   defaultSave,
   foodName,
   mountProfile,
+  growthTarget,
   passivePerSecond,
   petStats,
   stageAtLeast,
@@ -57,7 +58,7 @@ import {
 } from "./world.js";
 import { followPoint, inSafeZone, tameFood } from "./rules.js";
 
-const SAVE_KEY = "pawclaw-greenwood-v1";
+const SAVE_KEY = "pawclaw-greenwood-v2";
 const HIP = 0.52;
 
 function loadSave() {
@@ -969,7 +970,8 @@ export class Game {
       const pulse = punch > 0 ? 1 + Math.sin(Math.min(1, punch) * Math.PI) * 0.12 : 1;
       pet.punch = Math.max(0, punch - dt * 0.65);
       const stageScale = pet.stage === "alpha" ? 1.32 : pet.stage === "prime" ? 1.14 : pet.stage === "baby" ? 0.88 : pet.stage === "juvenile" ? 0.94 : 1;
-      view.anim.group.scale.setScalar((0.94 + (pet.growth / 100) * 0.1) * pulse * stageScale);
+      const grown = Math.min(1, pet.growth / growthTarget(pet));
+      view.anim.group.scale.setScalar((0.94 + grown * 0.1) * pulse * stageScale);
       view.anim.animate(dt, {
         moving: !!(pet.moving || (ridden && Math.abs(this.mountSpeed) > 0.35)),
         sit: pet.sitting,
@@ -1028,7 +1030,7 @@ export class Game {
   }
 
   ensureView(pet) {
-    const bucket = Math.floor(pet.growth / 20);
+    const bucket = Math.floor((pet.growth / growthTarget(pet)) * 5);
     const key = `${pet.stage}|${bucket}|${(pet.accessories || []).join(",")}`;
     let view = this.views.get(pet.uid);
     if (view && view.key === key) return view;
@@ -1038,7 +1040,7 @@ export class Game {
       this.scene.remove(view.anim.group);
       view.anim.dispose();
     }
-    const anim = buildCreature(pet.species, pet.stage, pet.growth / 100, pet.accessories || []);
+    const anim = buildCreature(pet.species, pet.stage, Math.min(1, pet.growth / growthTarget(pet)), pet.accessories || []);
     this.scene.add(anim.group);
     view = { anim, key };
     this.views.set(pet.uid, view);
@@ -1067,15 +1069,18 @@ export class Game {
     const sp = SPECIES[pet.species];
     if (!sp.stages.includes(pet.stage)) pet.stage = "baby";
     const nxt = sp.stages[sp.stages.indexOf(pet.stage) + 1];
-    if (!nxt && pet.growth >= 100) return;
+    const cap = nxt === "alpha" ? 100000 : 100;
+    if (!nxt && pet.growth >= cap) return;
     pet.growth += amount;
-    while (pet.growth >= 100) {
+    while (true) {
       const next = sp.stages[sp.stages.indexOf(pet.stage) + 1];
+      const need = next === "alpha" ? 100000 : 100;
       if (!next) {
-        pet.growth = 100;
+        pet.growth = Math.min(pet.growth, 100);
         break;
       }
-      pet.growth -= 100;
+      if (pet.growth < need) break;
+      pet.growth -= need;
       const prev = pet.stage;
       pet.stage = next;
       this.onEvolve(pet, prev, next);
