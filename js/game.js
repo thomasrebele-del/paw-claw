@@ -10,6 +10,7 @@ import {
   Mesh,
   MeshBasicMaterial,
   PCFSoftShadowMap,
+  PMREMGenerator,
   PerspectiveCamera,
   RingGeometry,
   Scene,
@@ -147,7 +148,15 @@ export class Game {
     this.renderer.shadowMap.type = PCFSoftShadowMap;
     this.renderer.outputColorSpace = SRGBColorSpace;
     this.renderer.toneMapping = ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.02;
+    this.renderer.toneMappingExposure = 1.05;
+    const pmrem = new PMREMGenerator(this.renderer);
+    const env = new Scene();
+    env.add(new HemisphereLight("#d7ecff", "#6d8a52", 1));
+    const envSun = new DirectionalLight("#fff4e0", 2);
+    envSun.position.set(20, 40, 10);
+    env.add(envSun);
+    this.scene.environment = pmrem.fromScene(env, 0.04).texture;
+    pmrem.dispose();
 
     this.world = createWorld(this.scene);
     this.hemi = new HemisphereLight("#cfe6ff", "#6d8a52", 0.72);
@@ -156,6 +165,7 @@ export class Game {
     this.sun.position.set(30, 48, 16);
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(2048, 2048);
+    this.sun.shadow.radius = 3;
     this.sun.shadow.camera.near = 2;
     this.sun.shadow.camera.far = 90;
     this.sun.shadow.camera.left = -26;
@@ -188,7 +198,7 @@ export class Game {
     this.stats.bosses = this.stats.bosses || [];
     this.wilds = SPAWNS.filter((s) => !this.removedWild.includes(s.id)).map((s) => {
       const sp = SPECIES[s.species];
-      const maxHp = Math.round(16 + sp.base.hp * 0.22);
+      const maxHp = Math.round((16 + sp.base.hp * 0.22) * 10);
       return {
         ...s,
         yaw: 0,

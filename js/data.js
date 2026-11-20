@@ -697,9 +697,9 @@ for (const key of Object.keys(SPECIES)) {
 }
 
 export const BOSSES = [
-  { id: "boss-thorn", species: "wolf", name: "Thorn, the Briar Alpha", x: -28, z: -42, hp: 160, scale: 1.8 },
-  { id: "boss-maw", species: "bear", name: "Maw of Greyhorn", x: 6, z: -90, hp: 200, scale: 2 },
-  { id: "boss-tyrant", species: "eagle", name: "Sky Tyrant", x: 18, z: 72, hp: 140, scale: 1.8 },
+  { id: "boss-thorn", species: "wolf", name: "Thorn, the Briar Alpha", x: -28, z: -42, hp: 1600, scale: 1.8 },
+  { id: "boss-maw", species: "bear", name: "Maw of Greyhorn", x: 6, z: -90, hp: 2000, scale: 2 },
+  { id: "boss-tyrant", species: "eagle", name: "Sky Tyrant", x: 18, z: 72, hp: 1400, scale: 1.8 },
 ];
 
 export const SPAWNS = [
@@ -759,7 +759,7 @@ export function petStats(pet) {
   const lv = 1 + (pet.level - 1) * 0.06;
   const stageMul = 0.62 + t * 0.52;
   return {
-    hp: Math.round(sp.base.hp * stageMul * lv),
+    hp: Math.round(sp.base.hp * stageMul * lv * 10),
     atk: Math.round(sp.base.atk * stageMul * lv),
     def: Math.round(sp.base.def * stageMul * lv),
     speed: sp.base.speed * (0.68 + t * 0.38) * (1 + (pet.level - 1) * 0.03),
