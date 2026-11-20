@@ -552,7 +552,8 @@ function paintMap(canvas, game, follow) {
   ctx.clearRect(0, 0, w, h);
   ctx.fillStyle = "#e7f2df";
   ctx.fillRect(0, 0, w, h);
-  const bounds = follow
+  const far = Math.max(Math.abs(game.player.x), Math.abs(game.player.z)) > 120;
+  const bounds = follow || far
     ? { x: game.player.x - 70, z: game.player.z - 42, s: w / 140 }
     : { x: -130, z: -130, s: w / 280 };
   const pt = (x, z) => [ (x - bounds.x) * bounds.s, (z - bounds.z) * bounds.s ];

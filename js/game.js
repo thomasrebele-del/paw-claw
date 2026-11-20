@@ -512,8 +512,8 @@ export class Game {
       const dist = Math.hypot(dx, dz) || 1;
       const step = Math.min(dist, speed * dt);
       if (speed > 0) {
-        wild.x = clamp(wild.x + (dx / dist) * step, -118, 140);
-        wild.z = clamp(wild.z + (dz / dist) * step, -118, 140);
+        wild.x = clamp(wild.x + (dx / dist) * step, -2450, 2450);
+        wild.z = clamp(wild.z + (dz / dist) * step, -2450, 2450);
         wild.yaw = Math.atan2(dx, dz);
       }
       wild.moving = step > 0.01 && speed > 0;
@@ -661,7 +661,7 @@ export class Game {
     ix /= len;
     iz /= len;
     const sprint = this.keys.ShiftLeft || this.keys.ShiftRight;
-    let speed = moving ? (sprint ? 9.6 : 6.2) : 0;
+    let speed = moving ? (sprint ? 10.56 : 6.82) : 0;
     const follower = this.activePet();
     if (follower && follower.species === "horse" && follower.stage === "juvenile") speed *= 1.1;
     if (this.buffT > 0) speed *= 1.16;
@@ -673,8 +673,8 @@ export class Game {
       const flags = this.travelFlags(false);
       const gated = this.applyGates(this.player.x, this.player.z, nx, nz, this.player.y, flags);
       const hit = collideCircle(gated.x, gated.z, 0.42, this.world.colliders);
-      this.player.x = clamp(hit.x, -118, 140);
-      this.player.z = clamp(hit.z, -118, 140);
+      this.player.x = clamp(hit.x, -2450, 2450);
+      this.player.z = clamp(hit.z, -2450, 2450);
       this.player.yaw = Math.atan2(ix, iz);
     }
     this.slideOffPeak(dt, false);
@@ -751,8 +751,8 @@ export class Game {
       nx = gated.x;
       nz = gated.z;
     }
-    pet.x = clamp(nx, -118, 140);
-    pet.z = clamp(nz, -118, 140);
+    pet.x = clamp(nx, -2450, 2450);
+    pet.z = clamp(nz, -2450, 2450);
 
     const ground = this.floorAt(pet.x, pet.z, pet.y);
     if (prof.fly) {

@@ -110,11 +110,11 @@ function tint(region, y, river) {
 }
 
 export function createWorld(scene) {
-  scene.fog = new Fog("#c5d7c8", 28, 120);
+  scene.fog = new Fog("#c5d7c8", 36, 170);
   scene.background = new Color("#9ec8e6");
 
-  const size = 250;
-  const seg = 110;
+  const size = 5000;
+  const seg = 280;
   const geo = new PlaneGeometry(size, size, seg, seg);
   geo.rotateX(-Math.PI / 2);
   const pos = geo.attributes.position;
